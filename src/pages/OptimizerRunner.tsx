@@ -7,37 +7,34 @@ const OptimizerRunner: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<OptimizationResult[]>([]);
   const [progress, setProgress] = useState(0);
-  const [targetSemester, setTargetSemester] = useState<number>(1);
+  const [targetSemester, setTargetSemester] = useState<number>(3); // Default to a common semester
 
-  const { departments, rooms, constraints: dataConstraints, setGeneratedTimetable } = useData();
-
-  // In a real app, constraints would also come from context/DB.
-  const [constraints, setConstraints] = useState([
-    { id: '1', name: 'No Faculty Double Booking', type: 'hard' as const, enabled: true, priority: 10 },
-    { id: '2', name: 'Room Capacity Check', type: 'hard' as const, enabled: true, priority: 10 },
-    { id: '2a', name: 'No Room Double Booking', type: 'hard' as const, enabled: true, priority: 10 },
-    { id: '2b', name: 'No Batch Double Booking', type: 'hard' as const, enabled: true, priority: 10 },
-    { id: '2c', name: 'Faculty Workload', type: 'hard' as const, enabled: true, priority: 10 },
-    { id: '3', name: 'Faculty Preferred Hours', type: 'soft' as const, enabled: true, priority: 7 },
-    { id: '4', name: 'Minimize Student Gaps', type: 'soft' as const, enabled: true, priority: 8 },
-  ]);
+  // Get live data from the context, including the user-defined constraints
+  const { departments, rooms, constraints, setGeneratedTimetable } = useData();
 
   const handleRunOptimization = async () => {
     setIsRunning(true);
     setProgress(0);
     setResults([]);
 
+    if (!departments.length || !rooms.length) {
+      alert("Cannot run optimizer: Departments and Rooms data is required.");
+      setIsRunning(false);
+      return;
+    }
+
     const optimizerInput: OptimizerInput = {
       departments,
       rooms,
-      constraints,
-      targetSemester: targetSemester, // Pass the selected semester
+      constraints, // Use the live constraints from the context
+      targetSemester: targetSemester,
     };
 
     try {
       const optimizationResults = await runOptimization(optimizerInput, setProgress);
       setResults(optimizationResults);
       if (optimizationResults.length > 0) {
+        // Save the best result to the global state
         setGeneratedTimetable(optimizationResults[0]);
       }
     } catch (error) {
@@ -106,20 +103,23 @@ const OptimizerRunner: React.FC = () => {
       </div>
 
       {/* Results */}
-       {results.length > 0 && !isRunning && (
+       {!isRunning && results.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Optimization Complete</h2>
            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="bg-green-50 rounded-lg p-6 text-center">
+                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
                 <div className="text-3xl font-bold text-green-900">{results[0].score.toFixed(2)}</div>
                 <div className="text-sm text-green-700">Overall Score</div>
               </div>
               <div className="bg-red-50 rounded-lg p-6 text-center">
+                <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-2" />
                 <div className="text-3xl font-bold text-red-900">{results[0].conflicts}</div>
                 <div className="text-sm text-red-700">Hard Conflicts</div>
               </div>
                <div className="bg-blue-50 rounded-lg p-6 text-center">
-                <div className="text-3xl font-bold text-blue-900">View Timetable</div>
+                <Download className="h-8 w-8 text-blue-600 mx-auto mb-2" />
+                <div className="text-xl font-bold text-blue-900">Timetable Ready</div>
                 <div className="text-sm text-blue-700">Check the results in the viewer.</div>
               </div>
             </div>
