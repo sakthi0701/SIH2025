@@ -1,35 +1,49 @@
-import React, { useState } from 'react';
-import { Save, Undo, Redo, Copy, Move, AlertTriangle, CheckCircle } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Save, Undo, Redo, Copy, Move, AlertTriangle, CheckCircle, Search } from 'lucide-react';
+import { useData } from '../context/DataContext';
 
 const TimetableEditor: React.FC = () => {
-  const [selectedCell, setSelectedCell] = useState<{ day: number; slot: number } | null>(null);
-  const [conflicts, setConflicts] = useState<string[]>([]);
+  const { generatedTimetable, setGeneratedTimetable } = useData();
+  const [selectedCell, setSelectedCell] = useState<{ day: string; slot: string } | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
-  const timeSlots = [
-    '9:00-10:00',
-    '10:00-11:00',
-    '11:00-12:00',
-    '12:00-13:00',
-    '14:00-15:00',
-    '15:00-16:00',
-    '16:00-17:00'
-  ];
+  const timeSlots = useMemo(() => [
+    '9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', 
+    '14:00-15:00', '15:00-16:00', '16:00-17:00'
+  ], []);
 
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  const days = useMemo(() => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], []);
+
+  const conflicts = useMemo(() => {
+    // In a more advanced version, this could re-calculate conflicts on the fly.
+    // For now, we rely on the conflict count from the optimizer result.
+    return generatedTimetable?.conflicts ?? 0;
+  }, [generatedTimetable]);
+
+  const selectedClass = useMemo(() => {
+    if (!selectedCell || !generatedTimetable?.timetable) return null;
+    const classesInSlot = generatedTimetable.timetable[selectedCell.day]?.[selectedCell.slot] || [];
+    return classesInSlot[0] || null; // Assuming one class per cell for simplicity in the details panel
+  }, [selectedCell, generatedTimetable]);
+
 
   const saveChanges = () => {
-    try {
-      // Here you would typically save the timetable changes
-      // For now, we'll just simulate the save
-      alert('Timetable changes saved successfully!');
-      setUnsavedChanges(false);
-      setConflicts([]); // Clear conflicts after successful save
-    } catch (error) {
-      console.error('Error saving changes:', error);
-      alert('Error saving changes. Please try again.');
-    }
+    // Here you would typically save the updated timetable to Supabase
+    alert('Timetable changes saved successfully!');
+    setUnsavedChanges(false);
   };
+  
+  if (!generatedTimetable) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center">
+        <Search className="h-16 w-16 text-gray-400 mb-4" />
+        <h2 className="text-2xl font-semibold text-gray-800">No Timetable Loaded</h2>
+        <p className="text-gray-600 mt-2">
+          Please generate a timetable from the Optimizer page to begin editing.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -50,14 +64,7 @@ const TimetableEditor: React.FC = () => {
             <Undo className="h-4 w-4 mr-2" />
             Undo
           </button>
-          <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-            <Redo className="h-4 w-4 mr-2" />
-            Redo
-          </button>
-          <button
-            onClick={saveChanges}
-            className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors"
-          >
+          <button onClick={saveChanges} className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors">
             <Save className="h-4 w-4 mr-2" />
             Save Changes
           </button>
@@ -65,24 +72,17 @@ const TimetableEditor: React.FC = () => {
       </div>
 
       {/* Status Bar */}
-      {conflicts.length > 0 ? (
+      {conflicts > 0 ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
           <div className="flex">
             <AlertTriangle className="h-5 w-5 text-red-600 mr-3 flex-shrink-0" />
             <div>
               <h3 className="text-sm font-medium text-red-800">
-                {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''} detected
+                {conflicts} conflict{conflicts > 1 ? 's' : ''} detected
               </h3>
               <p className="text-sm text-red-700 mt-1">
-                Please resolve conflicts before saving the timetable.
+                This timetable has hard constraint violations. Please resolve them before saving.
               </p>
-              <div className="mt-2">
-                {conflicts.map((conflict, index) => (
-                  <div key={index} className="text-xs text-red-600 bg-red-100 px-2 py-1 rounded inline-block mr-2 mb-1">
-                    {conflict}
-                  </div>
-                ))}
-              </div>
             </div>
           </div>
         </div>
@@ -98,78 +98,38 @@ const TimetableEditor: React.FC = () => {
         </div>
       )}
 
-      {/* Editor Tools */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">Actions:</span>
-            <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-              <Move className="h-3 w-3 mr-1" />
-              Move Class
-            </button>
-            <button className="inline-flex items-center px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors">
-              <Copy className="h-3 w-3 mr-1" />
-              Copy Class
-            </button>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium text-gray-700">View:</span>
-            <select className="border border-gray-300 rounded px-2 py-1 text-xs">
-              <option>All Classes</option>
-              <option>Only Conflicts</option>
-              <option>Department View</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
       {/* Timetable Grid */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div className="overflow-x-auto">
           <div className="min-w-full">
-            <div className="grid grid-cols-6 gap-px bg-gray-200 rounded-lg overflow-hidden">
-              {/* Header */}
+            <div className={`grid grid-cols-6 gap-px bg-gray-200 rounded-lg overflow-hidden`}>
               <div className="bg-gray-100 p-4 font-semibold text-gray-900">Time</div>
               {days.map((day) => (
-                <div key={day} className="bg-gray-100 p-4 font-semibold text-gray-900 text-center">
-                  {day}
-                </div>
+                <div key={day} className="bg-gray-100 p-4 font-semibold text-gray-900 text-center">{day}</div>
               ))}
 
-              {/* Time slots */}
-              {timeSlots.map((timeSlot, slotIndex) => (
-                <React.Fragment key={timeSlot}>
-                  <div className="bg-white p-4 border-r border-gray-200 font-medium text-gray-700 text-sm">
-                    {timeSlot}
-                  </div>
-                  {days.map((day, dayIndex) => {
-                    const isSelected = selectedCell?.day === dayIndex && selectedCell?.slot === slotIndex;
+              {timeSlots.map((slot) => (
+                <React.Fragment key={slot}>
+                  <div className="bg-white p-4 font-medium text-gray-700 text-sm">{slot}</div>
+                  {days.map((day) => {
+                    const isSelected = selectedCell?.day === day && selectedCell?.slot === slot;
+                    const classesInSlot = generatedTimetable.timetable[day]?.[slot] || [];
+                    const classData = classesInSlot[0]; // Assuming one class per slot for display
+
                     return (
                       <div
-                        key={`${day}-${timeSlot}`}
-                        onClick={() => setSelectedCell({ day: dayIndex, slot: slotIndex })}
-                        className={`bg-white p-2 min-h-[80px] border cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-100 hover:border-gray-300'
+                        key={`${day}-${slot}`}
+                        onClick={() => setSelectedCell({ day, slot })}
+                        className={`bg-white p-2 min-h-[100px] border-2 cursor-pointer transition-all ${
+                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-transparent hover:bg-gray-50'
                         }`}
                       >
-                        {/* Sample class - this would be dynamic */}
-                        {dayIndex === 0 && slotIndex === 0 && (
-                          <div className="bg-blue-50 border-l-4 border-blue-500 p-3 rounded-lg h-full">
-                            <div className="font-semibold text-sm text-blue-900 mb-1">Data Structures</div>
-                            <div className="text-xs text-blue-700">Dr. Smith</div>
-                            <div className="text-xs text-blue-700">Room A101</div>
-                            <div className="text-xs text-blue-600">CSE-2024-A</div>
-                          </div>
-                        )}
-                        {dayIndex === 1 && slotIndex === 2 && (
-                          <div className="bg-red-50 border-l-4 border-red-500 p-3 rounded-lg h-full">
-                            <div className="font-semibold text-sm text-red-900 mb-1">Circuit Theory</div>
-                            <div className="text-xs text-red-700">Dr. Johnson</div>
-                            <div className="text-xs text-red-700">Room A101</div>
-                            <div className="text-xs text-red-600">ECE-2024-A</div>
-                            <div className="text-xs text-red-600 font-semibold mt-1">CONFLICT!</div>
+                        {classData && (
+                          <div className={`bg-blue-50 border-l-4 border-blue-500 p-3 rounded-lg h-full text-xs`}>
+                            <div className="font-semibold text-blue-900 mb-1">{classData.course.name}</div>
+                            <div className="text-blue-700">🧑‍🏫 {classData.faculty.name}</div>
+                            <div className="text-blue-700">📍 {classData.room.name}</div>
+                            <div className="text-blue-600">🎓 {classData.batch.name}</div>
                           </div>
                         )}
                       </div>
@@ -185,32 +145,38 @@ const TimetableEditor: React.FC = () => {
       {/* Class Details Panel */}
       {selectedCell && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Selected Time Slot</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Current Assignment</h4>
-              <div className="space-y-2 text-sm">
-                <div><span className="text-gray-600">Course:</span> <span className="font-medium">Data Structures</span></div>
-                <div><span className="text-gray-600">Faculty:</span> <span className="font-medium">Dr. Smith</span></div>
-                <div><span className="text-gray-600">Room:</span> <span className="font-medium">Room A101</span></div>
-                <div><span className="text-gray-600">Batch:</span> <span className="font-medium">CSE-2024-A</span></div>
-                <div><span className="text-gray-600">Students:</span> <span className="font-medium">50</span></div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3">Suggested Alternatives</h4>
-              <div className="space-y-2">
-                <div className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <div className="text-sm font-medium">Move to Room B201</div>
-                  <div className="text-xs text-gray-600">Available, capacity 60</div>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Details for {selectedCell.day}, {selectedCell.slot}
+          </h3>
+          {selectedClass ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Current Assignment</h4>
+                  <div className="space-y-2 text-sm">
+                    <div><span className="text-gray-600">Course:</span> <span className="font-medium">{selectedClass.course.name}</span></div>
+                    <div><span className="text-gray-600">Faculty:</span> <span className="font-medium">{selectedClass.faculty.name}</span></div>
+                    <div><span className="text-gray-600">Room:</span> <span className="font-medium">{selectedClass.room.name} (Cap: {selectedClass.room.capacity})</span></div>
+                    <div><span className="text-gray-600">Batch:</span> <span className="font-medium">{selectedClass.batch.name}</span></div>
+                    <div><span className="text-gray-600">Students:</span> <span className="font-medium">{selectedClass.batch.studentCount}</span></div>
+                  </div>
                 </div>
-                <div className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                  <div className="text-sm font-medium">Swap with 11:00-12:00 slot</div>
-                  <div className="text-xs text-gray-600">No conflicts detected</div>
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Suggested Actions</h4>
+                  <div className="space-y-2">
+                    <button className="w-full text-left p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <div className="text-sm font-medium flex items-center"><Move className="h-4 w-4 mr-2" /> Move Class</div>
+                      <div className="text-xs text-gray-600 ml-6">Find another available slot</div>
+                    </button>
+                    <button className="w-full text-left p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                      <div className="text-sm font-medium flex items-center"><Copy className="h-4 w-4 mr-2" /> Swap Class</div>
+                      <div className="text-xs text-gray-600 ml-6">Exchange with another class</div>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
+          ) : (
+            <p className="text-gray-500">This time slot is empty. You can assign a class here.</p>
+          )}
         </div>
       )}
     </div>
