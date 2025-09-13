@@ -10,15 +10,13 @@ interface EditDataModalProps {
 }
 
 const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, type }) => {
-  // NOTE: This modal currently assumes top-level data editing.
-  // For nested items like courses, you would need to pass in parent IDs (departmentId, etc.)
-  // and call the more specific update functions like `updateCourseInRegulation`.
   const { 
     updateDepartment, 
-    updateCourse, 
-    updateFaculty, 
+    updateCourseInRegulation, 
+    updateFacultyInDepartment, 
     updateRoom, 
-    updateBatch 
+    updateBatchInDepartment,
+    updateRegulationInDepartment
   } = useData();
   
   const [formData, setFormData] = useState<any>({});
@@ -37,6 +35,10 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
         { key: 'name', label: 'Department Name', type: 'text', required: true },
         { key: 'code', label: 'Department Code', type: 'text', required: true },
         { key: 'head', label: 'Head of Department', type: 'text', required: true },
+      ],
+      regulations: [
+        { key: 'name', label: 'Regulation Name', type: 'text', required: true },
+        { key: 'year', label: 'Year', type: 'number', required: true },
       ],
       courses: [
         { key: 'code', label: 'Course Code', type: 'text', required: true },
@@ -75,22 +77,25 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
     e.preventDefault();
     
     try {
-      const { id, ...updates } = formData;
+      const { id, departmentId, regulationId, ...updates } = formData;
       switch (type) {
         case 'departments':
           updateDepartment(id, updates);
           break;
+        case 'regulations':
+          updateRegulationInDepartment(departmentId, id, updates);
+          break;
         case 'courses':
-          updateCourse(id, updates);
+          updateCourseInRegulation(departmentId, regulationId, id, updates);
           break;
         case 'faculty':
-          updateFaculty(id, updates);
+          updateFacultyInDepartment(departmentId, id, updates);
           break;
         case 'rooms':
           updateRoom(id, updates);
           break;
         case 'batches':
-          updateBatch(id, updates);
+          updateBatchInDepartment(departmentId, id, updates);
           break;
         default:
           throw new Error(`Unknown type: ${type}`);
