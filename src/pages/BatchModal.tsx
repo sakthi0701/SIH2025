@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useData, Batch, Regulation } from '../../context/DataContext';
-import { Users, Save, X } from 'lucide-react';
 
 interface BatchModalProps {
   mode: 'add' | 'edit';
@@ -67,3 +66,4 @@ const BatchModal: React.FC<BatchModalProps> = ({ mode, batch, departmentId, regu
 };
 
 export default BatchModal;
+
