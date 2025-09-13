@@ -2,59 +2,26 @@ import React, { useState } from 'react';
 import { Plus, Save, RotateCcw, Info } from 'lucide-react';
 import ConstraintCard from '../components/Constraints/ConstraintCard';
 import ConstraintModal from '../components/Constraints/ConstraintModal';
+import { useData } from '../context/DataContext';
 
 const ConstraintsBuilder: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
-  const [constraints, setConstraints] = useState([
-    {
-      id: '1',
-      name: 'No Faculty Double Booking',
-      type: 'hard',
-      description: 'A faculty member cannot be assigned to two classes at the same time',
-      priority: 10,
-      enabled: true,
-      category: 'Faculty'
-    },
-    {
-      id: '2',
-      name: 'Room Capacity Check',
-      type: 'hard',
-      description: 'Room capacity must be greater than or equal to the number of students',
-      priority: 10,
-      enabled: true,
-      category: 'Room'
-    },
-    {
-      id: '3',
-      name: 'Faculty Preferred Hours',
-      type: 'soft',
-      description: 'Assign faculty to their preferred time slots when possible',
-      priority: 7,
-      enabled: true,
-      category: 'Faculty'
-    },
-    {
-      id: '4',
-      name: 'Minimize Student Gaps',
-      type: 'soft',
-      description: 'Reduce gaps between classes for students',
-      priority: 8,
-      enabled: true,
-      category: 'Student'
-    },
-    {
-      id: '5',
-      name: 'Lab After Theory',
-      type: 'soft',
-      description: 'Schedule lab sessions after corresponding theory classes',
-      priority: 6,
-      enabled: true,
-      category: 'Course'
-    }
-  ]);
+  // Get constraints and management functions from the context
+  const { constraints, addConstraint, updateConstraint, deleteConstraint } = useData();
 
   const hardConstraints = constraints.filter(c => c.type === 'hard');
   const softConstraints = constraints.filter(c => c.type === 'soft');
+
+  const handleSaveChanges = async () => {
+    try {
+      // In a real app, you might batch updates, but here we update on each action.
+      // This button can be used for confirmation messages or future batch-saving logic.
+      alert('All changes to constraints have been saved automatically!');
+    } catch (error) {
+      console.error("Error confirming save:", error);
+      alert('Could not confirm save. Please check console for errors.');
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -106,14 +73,8 @@ const ConstraintsBuilder: React.FC = () => {
             <ConstraintCard
               key={constraint.id}
               constraint={constraint}
-              onUpdate={(id, updates) => {
-                setConstraints(prev =>
-                  prev.map(c => c.id === id ? { ...c, ...updates } : c)
-                );
-              }}
-              onDelete={(id) => {
-                setConstraints(prev => prev.filter(c => c.id !== id));
-              }}
+              onUpdate={updateConstraint}
+              onDelete={deleteConstraint}
             />
           ))}
         </div>
@@ -132,14 +93,8 @@ const ConstraintsBuilder: React.FC = () => {
             <ConstraintCard
               key={constraint.id}
               constraint={constraint}
-              onUpdate={(id, updates) => {
-                setConstraints(prev =>
-                  prev.map(c => c.id === id ? { ...c, ...updates } : c)
-                );
-              }}
-              onDelete={(id) => {
-                setConstraints(prev => prev.filter(c => c.id !== id));
-              }}
+              onUpdate={updateConstraint}
+              onDelete={deleteConstraint}
             />
           ))}
         </div>
@@ -147,7 +102,10 @@ const ConstraintsBuilder: React.FC = () => {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <button className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors">
+        <button 
+          onClick={handleSaveChanges}
+          className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+        >
           <Save className="h-4 w-4 mr-2" />
           Save Constraints
         </button>
@@ -159,7 +117,7 @@ const ConstraintsBuilder: React.FC = () => {
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           onAdd={(constraint) => {
-            setConstraints(prev => [...prev, constraint]);
+            addConstraint(constraint);
             setShowModal(false);
           }}
         />
