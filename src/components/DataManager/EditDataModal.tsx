@@ -43,7 +43,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
       courses: [
         { key: 'code', label: 'Course Code', type: 'text', required: true },
         { key: 'name', label: 'Course Name', type: 'text', required: true },
-        { key: 'department', label: 'Department', type: 'text', required: true },
         { key: 'credits', label: 'Credits', type: 'number', required: true },
         { key: 'type', label: 'Type', type: 'select', options: ['Theory', 'Lab', 'Practical'], required: true },
         { key: 'weeklyHours', label: 'Weekly Hours', type: 'number', required: true }
@@ -51,7 +50,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
       faculty: [
         { key: 'name', label: 'Name', type: 'text', required: true },
         { key: 'email', label: 'Email', type: 'email', required: true },
-        { key: 'department', label: 'Department', type: 'text', required: true },
         { key: 'maxLoad', label: 'Max Weekly Load', type: 'number', required: true }
       ],
       rooms: [
@@ -62,9 +60,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
       ],
       batches: [
         { key: 'name', label: 'Batch Name', type: 'text', required: true },
-        { key: 'program', label: 'Program', type: 'text', required: true },
-        { key: 'year', label: 'Year', type: 'number', required: true },
-        { key: 'department', label: 'Department', type: 'text', required: true },
+        { key: 'regulationId', label: 'Regulation', type: 'select', options: [], required: true }, // Needs dynamic options
         { key: 'studentCount', label: 'Student Count', type: 'number', required: true }
       ]
     };
