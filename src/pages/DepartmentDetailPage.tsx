@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useData, Department, Course } from '../context/DataContext';
-import { ArrowLeft, Book, Users, UserPlus, Plus, ChevronRight } from 'lucide-react';
+import { useData, Course } from '../context/DataContext';
+import { ArrowLeft, Plus, ChevronRight, Edit2, Trash2, AlertTriangle, UserPlus, ChevronDown } from 'lucide-react';
 
-// --- MODALS (Can be moved to separate files later) ---
+// --- Reusable Modals (Can be moved to separate files later) ---
 
 const AddRegulationModal: React.FC<{ departmentId: string; onClose: () => void }> = ({ departmentId, onClose }) => {
   const { addRegulationToDepartment } = useData();
@@ -17,6 +17,7 @@ const AddRegulationModal: React.FC<{ departmentId: string; onClose: () => void }
       onClose();
     }
   };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
@@ -82,7 +83,7 @@ const AddBatchModal: React.FC<{ departmentId: string; regulations: any[], onClos
     );
 };
 
-const AddFacultyModal: React.FC<{ departmentId: string; allCourses: (Course & {deptCode: string})[], onClose: () => void; }> = ({ departmentId, allCourses, onClose }) => {
+const AddFacultyModal: React.FC<{ departmentId: string; allCourses: any[], onClose: () => void; }> = ({ departmentId, allCourses, onClose }) => {
     const { addFacultyToDepartment } = useData();
     const [formData, setFormData] = useState({ name: '', email: '', maxLoad: 18, assignedCourses: [] as string[] });
 
@@ -143,20 +144,41 @@ const AddFacultyModal: React.FC<{ departmentId: string; allCourses: (Course & {d
     );
 };
 
+const DeleteConfirmModal: React.FC<{ item: any; itemType: string; onConfirm: () => void; onClose: () => void; }> = ({ item, itemType, onConfirm, onClose }) => {
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+                <div className="p-6">
+                    <div className="flex items-start space-x-3">
+                        <div className="p-2 bg-red-100 rounded-full"><AlertTriangle className="h-5 w-5 text-red-600" /></div>
+                        <div>
+                            <h3 className="text-lg font-semibold">Delete {itemType}</h3>
+                            <p className="text-sm text-gray-600 mt-1">Are you sure you want to delete "{item.name}"? This action cannot be undone.</p>
+                        </div>
+                    </div>
+                </div>
+                <div className="flex justify-end space-x-2 p-4 bg-gray-50 rounded-b-xl">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-200 rounded-lg">Cancel</button>
+                    <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg">Delete</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// --- Main Page Component ---
 
 const DepartmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { departments } = useData();
+  const { departments, deleteRegulationFromDepartment, deleteBatchFromDepartment, deleteFacultyFromDepartment } = useData();
   const [activeTab, setActiveTab] = useState<'regulations' | 'batches' | 'faculty'>('regulations');
   const [showAddRegulationModal, setShowAddRegulationModal] = useState(false);
   const [showAddBatchModal, setShowAddBatchModal] = useState(false);
-  // ---- CHANGE: State for Add Faculty Modal ----
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
-  // -------------------------------------------
+  const [itemToDelete, setItemToDelete] = useState<{ item: any; type: string } | null>(null);
+  const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
 
   const department = departments.find(d => d.id === id);
-  
-  // Create a flat list of all courses from all departments for the faculty modal
   const allCourses = departments.flatMap(dept => 
     dept.regulations.flatMap(reg => 
       reg.semesters.flatMap(sem => 
@@ -165,41 +187,53 @@ const DepartmentDetailPage: React.FC = () => {
     )
   );
 
+  const handleDeleteConfirm = () => {
+    if (!itemToDelete || !department) return;
+    switch (itemToDelete.type) {
+      case 'Regulation': deleteRegulationFromDepartment(department.id, itemToDelete.item.id); break;
+      case 'Batch': deleteBatchFromDepartment(department.id, itemToDelete.item.id); break;
+      case 'Faculty': deleteFacultyFromDepartment(department.id, itemToDelete.item.id); break;
+    }
+    setItemToDelete(null);
+  };
+  
   if (!department) {
     return (
       <div className="text-center py-12">
         <h2 className="text-xl font-bold">Department not found</h2>
-        <Link to="/departments" className="text-blue-600 hover:underline mt-4 inline-block">
-          &larr; Back to Departments
+        <Link to="/data-manager" className="text-blue-600 hover:underline mt-4 inline-block">
+          &larr; Back to Data Manager
         </Link>
       </div>
     );
   }
 
-  // ---- TAB CONTENT COMPONENTS ----
+  // --- TAB CONTENT COMPONENTS ---
   const RegulationsTab = () => (
     <div className="space-y-4">
        <div className="flex justify-between items-center">
-        <p>Manage the academic regulations and their curriculums for the department.</p>
+        <p>Manage the academic regulations and their curriculums.</p>
         <button onClick={() => setShowAddRegulationModal(true)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" /> Add Regulation
         </button>
       </div>
       <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
         {department.regulations.map(reg => (
-          <Link 
-            key={reg.id} 
-            to={`/departments/${department.id}/regulations/${reg.id}`}
-            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
-          >
-            <div>
-              <p className="font-semibold">{reg.name} ({reg.year})</p>
-              <p className="text-sm text-gray-500">{reg.semesters.reduce((acc, sem) => acc + sem.courses.length, 0)} courses across 8 semesters</p>
+          <div key={reg.id} className="flex items-center justify-between p-4 group">
+            <Link to={`/departments/${department.id}/regulations/${reg.id}`} className="flex-grow flex items-center justify-between">
+              <div>
+                <p className="font-semibold">{reg.name} ({reg.year})</p>
+                <p className="text-sm text-gray-500">{reg.semesters.reduce((acc, sem) => acc + sem.courses.length, 0)} courses</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <div className="flex space-x-2 pl-4">
+                <button className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => setItemToDelete({item: reg, type: 'Regulation'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
             </div>
-            <ChevronRight className="h-5 w-5 text-gray-400" />
-          </Link>
+          </div>
         ))}
-         {department.regulations.length === 0 && <p className="p-4 text-gray-500">No regulations found.</p>}
+        {department.regulations.length === 0 && <p className="p-4 text-gray-500">No regulations found.</p>}
       </div>
     </div>
   );
@@ -207,7 +241,7 @@ const DepartmentDetailPage: React.FC = () => {
   const BatchesTab = () => (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <p>Manage student batches for the department.</p>
+        <p>Manage student batches and view their assigned courses.</p>
         <button onClick={() => setShowAddBatchModal(true)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" /> Add Batch
         </button>
@@ -215,12 +249,34 @@ const DepartmentDetailPage: React.FC = () => {
       <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
         {department.batches.map(batch => {
           const regulation = department.regulations.find(r => r.id === batch.regulationId);
+          const courses = regulation?.semesters.flatMap(s => s.courses) || [];
           return (
-            <div key={batch.id} className="p-4">
-              <p className="font-semibold">{batch.name}</p>
-              <p className="text-sm text-gray-500">
-                {batch.studentCount} Students • Regulation: {regulation?.name || 'N/A'}
-              </p>
+            <div key={batch.id}>
+              <div className="flex items-center justify-between p-4 group">
+                <div>
+                  <p className="font-semibold">{batch.name}</p>
+                  <p className="text-sm text-gray-500">{batch.studentCount} Students • Regulation: {regulation?.name || 'N/A'}</p>
+                </div>
+                <div className="flex items-center space-x-2">
+                    <button onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)} className="p-2 text-gray-500 hover:text-gray-800">
+                        <ChevronDown className={`h-5 w-5 transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} />
+                    </button>
+                    <button className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => setItemToDelete({item: batch, type: 'Batch'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              </div>
+              {expandedBatch === batch.id && (
+                <div className="p-4 bg-gray-50 border-t">
+                  <h4 className="font-semibold text-sm mb-2">Assigned Courses for this Batch:</h4>
+                  {courses.length > 0 ? (
+                    <ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">
+                      {courses.map(c => <li key={c.id}>{c.name} ({c.code})</li>)}
+                    </ul>
+                  ) : (
+                    <p className="text-sm text-gray-500">No courses found for this regulation.</p>
+                  )}
+                </div>
+              )}
             </div>
           )
         })}
@@ -229,7 +285,6 @@ const DepartmentDetailPage: React.FC = () => {
     </div>
   );
 
-  // ---- CHANGE: Implement FacultyTab Component ----
   const FacultyTab = () => (
      <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -240,15 +295,18 @@ const DepartmentDetailPage: React.FC = () => {
       </div>
       <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
         {department.faculty.map(fac => {
-          const assignedCourseNames = allCourses
-            .filter(c => fac.assignedCourses.includes(c.id))
-            .map(c => c.code)
-            .join(', ');
+          const assignedCourseNames = allCourses.filter(c => fac.assignedCourses.includes(c.id)).map(c => c.code).join(', ');
           return (
-            <div key={fac.id} className="p-4">
-              <p className="font-semibold">{fac.name}</p>
-              <p className="text-sm text-gray-500">{fac.email} • Max Load: {fac.maxLoad} hrs/week</p>
-              <p className="text-xs text-gray-500 mt-1">Handles: {assignedCourseNames || 'None'}</p>
+            <div key={fac.id} className="flex items-center justify-between p-4 group">
+              <div>
+                <p className="font-semibold">{fac.name}</p>
+                <p className="text-sm text-gray-500">{fac.email} • Max Load: {fac.maxLoad} hrs/week</p>
+                <p className="text-xs text-gray-500 mt-1">Handles: {assignedCourseNames || 'None'}</p>
+              </div>
+              <div className="flex space-x-2">
+                <button className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => setItemToDelete({item: fac, type: 'Faculty'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+              </div>
             </div>
           )
         })}
@@ -256,43 +314,32 @@ const DepartmentDetailPage: React.FC = () => {
       </div>
     </div>
   )
-  // -------------------------------------------
-
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center space-x-4">
-        <Link to="/departments" className="p-2 rounded-lg hover:bg-gray-100">
-          <ArrowLeft className="h-5 w-5 text-gray-600" />
-        </Link>
+        <Link to="/data-manager" className="p-2 rounded-lg hover:bg-gray-100"><ArrowLeft className="h-5 w-5 text-gray-600" /></Link>
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{department.name}</h1>
           <p className="text-gray-600 mt-1">Head of Department: {department.head}</p>
         </div>
       </div>
-
-      {/* Tabs */}
       <div className="border-b border-gray-200">
         <nav className="flex space-x-8">
-          <button onClick={() => setActiveTab('regulations')} className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'regulations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Regulations</button>
-          <button onClick={() => setActiveTab('batches')} className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'batches' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Batches</button>
-          <button onClick={() => setActiveTab('faculty')} className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'faculty' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Faculty</button>
+            <button onClick={() => setActiveTab('regulations')} className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'regulations' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Regulations</button>
+            <button onClick={() => setActiveTab('batches')} className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'batches' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Batches</button>
+            <button onClick={() => setActiveTab('faculty')} className={`py-2 px-1 border-b-2 font-medium text-sm ${activeTab === 'faculty' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500'}`}>Faculty</button>
         </nav>
       </div>
-      
-      {/* Tab Content */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         {activeTab === 'regulations' && <RegulationsTab />}
         {activeTab === 'batches' && <BatchesTab />}
         {activeTab === 'faculty' && <FacultyTab />}
       </div>
-
       {showAddRegulationModal && <AddRegulationModal departmentId={department.id} onClose={() => setShowAddRegulationModal(false)} />}
       {showAddBatchModal && <AddBatchModal departmentId={department.id} regulations={department.regulations} onClose={() => setShowAddBatchModal(false)} />}
-      {/* ---- CHANGE: Render the Add Faculty Modal ---- */}
       {showAddFacultyModal && <AddFacultyModal departmentId={department.id} allCourses={allCourses} onClose={() => setShowAddFacultyModal(false)} />}
-      {/* ------------------------------------------- */}
+      {itemToDelete && <DeleteConfirmModal item={itemToDelete.item} itemType={itemToDelete.type} onConfirm={handleDeleteConfirm} onClose={() => setItemToDelete(null)} />}
     </div>
   );
 };
