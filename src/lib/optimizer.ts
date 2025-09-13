@@ -82,6 +82,13 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const TIME_SLOTS = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', '14:00-15:00', '15:00-16:00', '16:00-17:00'];
 const LUNCH_SLOT = '12:00-13:00';
 
+// --- GENETIC ALGORITHM CONFIGURATION ---
+const POPULATION_SIZE = 50;
+const MAX_GENERATIONS = 100;
+const MUTATION_RATE = 0.1;
+const TOURNAMENT_SIZE = 5;
+
+
 // --- HELPER FUNCTIONS ---
 
 /**
@@ -108,7 +115,7 @@ const createClassSessions = (courses: Course[], batches: Batch[]): { course: Cou
 const yieldToEventLoop = () => new Promise(resolve => setTimeout(resolve, 0));
 
 
-// --- CORE OPTIMIZER LOGIC ---
+// --- CORE GENETIC ALGORITHM LOGIC ---
 
 export const runOptimization = async (
   input: OptimizerInput,
@@ -126,98 +133,166 @@ export const runOptimization = async (
   const enabledHardConstraints = constraints.filter(c => c.type === 'hard' && c.enabled);
   const enabledSoftConstraints = constraints.filter(c => c.type === 'soft' && c.enabled);
 
-  // 2. Backtracking solver
-  const solve = async (sessionsToSchedule: typeof classSessions, currentTimetable: Timetable, assignedFacultyLoad: Record<string, number>): Promise<Timetable | null> => {
-    // Base case: If there are no more sessions to schedule, we found a solution.
-    if (sessionsToSchedule.length === 0) {
-      return currentTimetable;
-    }
+  // 2. Initialize population
+  let population = initializePopulation(classSessions, faculty, rooms, batches, POPULATION_SIZE);
 
-    const [currentSession, ...remainingSessions] = sessionsToSchedule;
-    
-    // Iterate through all possible assignments for the current session
-    for (const day of DAYS) {
-      for (const slot of TIME_SLOTS) {
-        if (slot === LUNCH_SLOT) continue; // Skip lunch break
+  // 3. Evolve population
+  for (let generation = 0; generation < MAX_GENERATIONS; generation++) {
+    // a. Calculate fitness for each individual
+    const fitnessScores = population.map(individual => calculateFitness(individual, enabledHardConstraints, enabledSoftConstraints, input));
 
-        for (const f of faculty) {
-          for (const r of rooms) {
-            
-            const newAssignment: ScheduledClass = {
-              course: currentSession.course,
-              batch: currentSession.batch,
-              faculty: f,
-              room: r,
-            };
+    // b. Create new population
+    let newPopulation = [];
 
-            // --- HARD CONSTRAINT CHECKING ---
-            let isConsistent = true;
-            for (const constraint of enabledHardConstraints) {
-              if (!checkConsistency(constraint.name, newAssignment, day, slot, currentTimetable, assignedFacultyLoad)) {
-                isConsistent = false;
-                break;
-              }
-            }
-
-            if (isConsistent) {
-              // If consistent, apply the assignment and recurse
-              currentTimetable[day][slot].push(newAssignment);
-              assignedFacultyLoad[f.id] = (assignedFacultyLoad[f.id] || 0) + 1;
-
-              const result = await solve(remainingSessions, currentTimetable, assignedFacultyLoad);
-              if (result) {
-                return result; // Solution found
-              }
-
-              // If recursion fails, backtrack
-              currentTimetable[day][slot].pop();
-              assignedFacultyLoad[f.id] -= 1;
-            }
-          }
-        }
+    for (let i = 0; i < POPULATION_SIZE; i++) {
+      // i. Select parents
+      const parent1 = tournamentSelection(population, fitnessScores);
+      const parent2 = tournamentSelection(population, fitnessScores);
+      
+      // ii. Crossover
+      let child = crossover(parent1, parent2);
+      
+      // iii. Mutate
+      if (Math.random() < MUTATION_RATE) {
+        child = mutate(child, faculty, rooms, batches);
       }
+
+      newPopulation.push(child);
     }
 
-    return null; // No valid assignment found for this session
-  };
-  
-  // 3. Generate a solution
-  updateProgress(20);
-  await yieldToEventLoop();
-
-  const initialTimetable = Object.fromEntries(DAYS.map(day => [day, Object.fromEntries(TIME_SLOTS.map(slot => [slot, []]))]));
-  const initialFacultyLoad = Object.fromEntries(faculty.map(f => [f.id, 0]));
-  
-  const foundTimetable = await solve(classSessions, initialTimetable, initialFacultyLoad);
-  
-  updateProgress(80);
-  await yieldToEventLoop();
-  
-  // 4. Score and format the solution
-  if (foundTimetable) {
-    const score = calculateScore(foundTimetable, enabledSoftConstraints, input);
-    solutions.push({
-      id: 1,
-      name: "Generated Schedule",
-      timetable: foundTimetable,
-      score: score,
-      conflicts: 0, // Hard constraints passed
-      // Calculate other metrics
-      utilization: 0, 
-      facultyBalance: 0,
-      studentGaps: 0,
-    });
-  } else {
-      console.error("Could not find a valid solution that satisfies all hard constraints.");
-      // Return empty or an error state
+    population = newPopulation;
+    
+    updateProgress(5 + (generation / MAX_GENERATIONS) * 90);
+    await yieldToEventLoop();
   }
+
+  // 4. Get best solution
+  const bestIndividual = population.reduce((best, current) => {
+    return calculateFitness(current, enabledHardConstraints, enabledSoftConstraints, input) > calculateFitness(best, enabledHardConstraints, enabledSoftConstraints, input) ? current : best;
+  });
+
+  const bestTimetable = individualToTimetable(bestIndividual);
+  const bestScore = calculateScore(bestTimetable, enabledSoftConstraints, input);
+  const bestConflicts = countHardConflicts(bestIndividual, enabledHardConstraints, input);
+
+  solutions.push({
+    id: 1,
+    name: "Generated Schedule",
+    timetable: bestTimetable,
+    score: bestScore,
+    conflicts: bestConflicts, 
+    utilization: 0, 
+    facultyBalance: 0,
+    studentGaps: 0,
+  });
 
   updateProgress(100);
   return solutions;
 };
 
 
-// --- CONSTRAINT CHECKING LOGIC ---
+// --- GENETIC ALGORITHM OPERATORS ---
+
+const initializePopulation = (sessions: any[], faculty: any[], rooms: any[], batches: any[], size: number) => {
+  let population = [];
+  for (let i = 0; i < size; i++) {
+    let individual = [];
+    for (const session of sessions) {
+      const randomDay = DAYS[Math.floor(Math.random() * DAYS.length)];
+      const randomSlot = TIME_SLOTS[Math.floor(Math.random() * TIME_SLOTS.length)];
+      const randomFaculty = faculty[Math.floor(Math.random() * faculty.length)];
+      const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+      
+      individual.push({
+        ...session,
+        day: randomDay,
+        slot: randomSlot,
+        faculty: randomFaculty,
+        room: randomRoom,
+      });
+    }
+    population.push(individual);
+  }
+  return population;
+};
+
+
+const calculateFitness = (individual: any[], hardConstraints: any[], softConstraints: any[], inputData: any) => {
+  let fitness = 100;
+  
+  // Penalize hard constraint violations
+  fitness -= countHardConflicts(individual, hardConstraints, inputData) * 10;
+  
+  // Penalize soft constraint violations
+  const timetable = individualToTimetable(individual);
+  fitness -= (100 - calculateScore(timetable, softConstraints, inputData));
+  
+  return Math.max(0, fitness);
+};
+
+
+const tournamentSelection = (population: any[], fitnessScores: number[]) => {
+  let best = null;
+  let bestFitness = -1;
+
+  for (let i = 0; i < TOURNAMENT_SIZE; i++) {
+    const randomIndex = Math.floor(Math.random() * population.length);
+    if (fitnessScores[randomIndex] > bestFitness) {
+      bestFitness = fitnessScores[randomIndex];
+      best = population[randomIndex];
+    }
+  }
+  return best;
+};
+
+
+const crossover = (parent1: any[], parent2: any[]) => {
+  const crossoverPoint = Math.floor(Math.random() * parent1.length);
+  const child = [...parent1.slice(0, crossoverPoint), ...parent2.slice(crossoverPoint)];
+  return child;
+};
+
+const mutate = (individual: any[], faculty: any[], rooms: any[], batches: any[]) => {
+  const mutationPoint = Math.floor(Math.random() * individual.length);
+  
+  const randomDay = DAYS[Math.floor(Math.random() * DAYS.length)];
+  const randomSlot = TIME_SLOTS[Math.floor(Math.random() * TIME_SLOTS.length)];
+  const randomFaculty = faculty[Math.floor(Math.random() * faculty.length)];
+  const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+
+  individual[mutationPoint] = {
+    ...individual[mutationPoint],
+    day: randomDay,
+    slot: randomSlot,
+    faculty: randomFaculty,
+    room: randomRoom,
+  }
+
+  return individual;
+};
+
+
+// --- CONFLICT CHECKING AND SCORING ---
+
+const countHardConflicts = (individual: any[], hardConstraints: any[], inputData: any) => {
+  let conflicts = 0;
+  const timetable = individualToTimetable(individual);
+  const facultyLoad = {};
+
+  for (const day of DAYS) {
+    for (const slot of TIME_SLOTS) {
+      const classesInSlot = timetable[day][slot];
+      for (const assignment of classesInSlot) {
+        for (const constraint of hardConstraints) {
+          if (!checkConsistency(constraint.name, assignment, day, slot, timetable, facultyLoad)) {
+            conflicts++;
+          }
+        }
+      }
+    }
+  }
+  return conflicts;
+}
 
 const checkConsistency = (
   constraintName: string,
@@ -232,13 +307,13 @@ const checkConsistency = (
 
   switch (constraintName) {
     case 'No Faculty Double Booking':
-      return !classesInSlot.some(c => c.faculty.id === faculty.id);
+      return !classesInSlot.some(c => c.faculty.id === faculty.id && c !== assignment);
 
     case 'No Room Double Booking':
-      return !classesInSlot.some(c => c.room.id === room.id);
+      return !classesInSlot.some(c => c.room.id === room.id && c !== assignment);
       
     case 'No Batch Double Booking':
-      return !classesInSlot.some(c => c.batch.id === batch.id);
+      return !classesInSlot.some(c => c.batch.id === batch.id && c !== assignment);
 
     case 'Room Capacity Check':
       return room.capacity >= batch.studentCount;
@@ -251,8 +326,6 @@ const checkConsistency = (
   }
 };
 
-
-// --- SCORING LOGIC ---
 
 const calculateScore = (
   timetable: Timetable,
@@ -311,3 +384,12 @@ const calculateScore = (
   // Score starts at 100 and decreases with penalties
   return Math.max(0, 100 - totalPenalty);
 };
+
+
+const individualToTimetable = (individual: any[]): Timetable => {
+  const timetable = Object.fromEntries(DAYS.map(day => [day, Object.fromEntries(TIME_SLOTS.map(slot => [slot, []]))]));
+  for (const assignment of individual) {
+    timetable[assignment.day][assignment.slot].push(assignment);
+  }
+  return timetable;
+}
