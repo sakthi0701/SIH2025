@@ -1,7 +1,7 @@
 import React from 'react';
 import { Clock, CheckCircle, AlertCircle, Edit, User, HelpCircle, Bell } from 'lucide-react';
 
-// This matches the Notification interface in NotificationContext.tsx
+// This interface should match the one in NotificationContext.tsx
 interface Activity {
   id: string;
   title: string;
@@ -27,6 +27,10 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) => {
   };
 
   const timeSince = (date: Date) => {
+    // Ensure date is a valid Date object before processing
+    if (!(date instanceof Date) || isNaN(date.getTime())) {
+        return "a few moments ago";
+    }
     const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
     let interval = seconds / 31536000;
     if (interval > 1) return Math.floor(interval) + " years ago";
@@ -49,21 +53,27 @@ const RecentActivity: React.FC<RecentActivityProps> = ({ activities }) => {
       </div>
       
       <div className="space-y-4">
-        {activities.slice(0, 5).map((activity) => { // Show latest 5 activities
-          const { Icon, color } = getActivityIcon(activity.type);
-          return (
-            <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-              <div className={`mt-1`}>
-                <Icon className={`h-4 w-4 ${color}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-800">{activity.title}</p>
-                <p className="text-sm text-gray-600">{activity.message}</p>
-                <p className="text-xs text-gray-500 mt-1">{timeSince(activity.timestamp)}</p>
-              </div>
+        {activities.length > 0 ? (
+            activities.slice(0, 5).map((activity) => { // Show latest 5 activities
+            const { Icon, color } = getActivityIcon(activity.type);
+            return (
+                <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
+                <div className={`mt-1`}>
+                    <Icon className={`h-4 w-4 ${color}`} />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800">{activity.title}</p>
+                    <p className="text-sm text-gray-600">{activity.message}</p>
+                    <p className="text-xs text-gray-500 mt-1">{timeSince(activity.timestamp)}</p>
+                </div>
+                </div>
+            );
+            })
+        ) : (
+            <div className="text-center py-10">
+                <p className="text-gray-500">No recent activity.</p>
             </div>
-          );
-        })}
+        )}
       </div>
       
       {activities.length > 5 && (
