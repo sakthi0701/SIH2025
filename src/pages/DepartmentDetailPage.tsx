@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData, Regulation } from '../context/DataContext';
-import { ArrowLeft, Book, Users, UserPlus, Plus } from 'lucide-react';
+import { ArrowLeft, Book, Users, UserPlus, Plus, ChevronRight } from 'lucide-react';
 
 // A simple modal for adding a new Regulation (can be moved later)
 const AddRegulationModal: React.FC<{ departmentId: string; onClose: () => void }> = ({ departmentId, onClose }) => {
@@ -71,10 +71,19 @@ const DepartmentDetailPage: React.FC = () => {
       </div>
       <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
         {department.regulations.map(reg => (
-          <div key={reg.id} className="p-4">
-            <p className="font-semibold">{reg.name} ({reg.year})</p>
-            <p className="text-sm text-gray-500">{reg.semesters.reduce((acc, sem) => acc + sem.courses.length, 0)} courses across 8 semesters</p>
-          </div>
+          // ---- CHANGE: Wrap regulation item in a Link ----
+          <Link 
+            key={reg.id} 
+            to={`/departments/${department.id}/regulations/${reg.id}`}
+            className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer"
+          >
+            <div>
+              <p className="font-semibold">{reg.name} ({reg.year})</p>
+              <p className="text-sm text-gray-500">{reg.semesters.reduce((acc, sem) => acc + sem.courses.length, 0)} courses across 8 semesters</p>
+            </div>
+            <ChevronRight className="h-5 w-5 text-gray-400" />
+          </Link>
+          // --------------------------------------------------
         ))}
          {department.regulations.length === 0 && <p className="p-4 text-gray-500">No regulations found.</p>}
       </div>
