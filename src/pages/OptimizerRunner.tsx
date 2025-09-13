@@ -9,10 +9,9 @@ const OptimizerRunner: React.FC = () => {
   const [results, setResults] = useState<OptimizationResult[]>([]);
   const [progress, setProgress] = useState(0);
 
-  // Get live data from our context
-  const { courses, faculty, rooms, batches } = useData();
+  // Get live data from our context and the function to update the timetable
+  const { courses, faculty, rooms, batches, setGeneratedTimetable } = useData();
   
-  // Get constraints (for now, using local state as in ConstraintsBuilder)
   // In a real app, this would also come from a context or be fetched.
   const [constraints, setConstraints] = useState([
     { id: '1', name: 'No Faculty Double Booking', type: 'hard' as const, enabled: true, priority: 10 },
@@ -41,6 +40,11 @@ const OptimizerRunner: React.FC = () => {
       // Call the real optimizer function and pass the progress updater
       const optimizationResults = await runOptimization(optimizerInput, setProgress);
       setResults(optimizationResults);
+      // ---- CHANGE: UPDATE THE GLOBAL STATE ----
+      if (optimizationResults.length > 0) {
+        setGeneratedTimetable(optimizationResults[0]);
+      }
+      // ----------------------------------------
     } catch (error) {
       console.error("Optimization failed:", error);
       alert("The optimizer could not find a valid solution with the given data and constraints. Please check your data or relax some constraints.");
@@ -63,7 +67,6 @@ const OptimizerRunner: React.FC = () => {
       {/* Optimization Controls */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         {/* ... parameter selectors (Time Limit, etc.) ... */}
-        {/* These are for show in this version, as the algorithm is complex */}
         
         <div className="flex space-x-4">
           <button
@@ -97,8 +100,7 @@ const OptimizerRunner: React.FC = () => {
       {/* Results */}
       {results.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-           {/* ... result display JSX (this part remains the same) ... */}
-           {/* It will now show the dynamically generated results */}
+           {/* ... result display JSX ... */}
         </div>
       )}
       {/* ... Info Panel ... */}
