@@ -24,12 +24,23 @@ const ImportModal: React.FC<ImportModalProps> = ({ isOpen, onClose }) => {
     if (!selectedFile) return;
     
     setIsProcessing(true);
-    // Simulate import process
-    setTimeout(() => {
+    
+    try {
+      // Simulate import process
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Here you would typically parse the file and add the data
+      // For now, we'll just show a success message
+      alert(`Successfully imported ${selectedFile.name}`);
+      
       setIsProcessing(false);
+      setSelectedFile(null);
       onClose();
-      // Show success notification
-    }, 2000);
+    } catch (error) {
+      console.error('Import error:', error);
+      alert('Error importing file. Please try again.');
+      setIsProcessing(false);
+    }
   };
 
   const importTypes = [

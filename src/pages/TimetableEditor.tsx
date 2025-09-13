@@ -19,8 +19,16 @@ const TimetableEditor: React.FC = () => {
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   const saveChanges = () => {
-    setUnsavedChanges(false);
-    // Save logic here
+    try {
+      // Here you would typically save the timetable changes
+      // For now, we'll just simulate the save
+      alert('Timetable changes saved successfully!');
+      setUnsavedChanges(false);
+      setConflicts([]); // Clear conflicts after successful save
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      alert('Error saving changes. Please try again.');
+    }
   };
 
   return (

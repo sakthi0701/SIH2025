@@ -5,7 +5,7 @@ const ApprovalWorkflow: React.FC = () => {
   const [selectedTimetable, setSelectedTimetable] = useState<string | null>(null);
   const [comment, setComment] = useState('');
 
-  const timetables = [
+  const [timetables, setTimetables] = useState([
     {
       id: 'tt1',
       department: 'Computer Science',
@@ -45,7 +45,7 @@ const ApprovalWorkflow: React.FC = () => {
         { author: 'Dr. Wilson', text: 'Please resolve room conflicts in Monday morning slots.', date: '2024-01-13' }
       ]
     }
-  ];
+  ]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -74,19 +74,56 @@ const ApprovalWorkflow: React.FC = () => {
   };
 
   const handleApprove = (id: string) => {
-    // Approval logic here
-    console.log('Approving timetable:', id);
+    setTimetables(prev => prev.map(tt => 
+      tt.id === id 
+        ? { 
+            ...tt, 
+            status: 'approved', 
+            approvedOn: new Date().toISOString().split('T')[0],
+            comments: [...tt.comments, {
+              author: 'Current User',
+              text: 'Approved',
+              date: new Date().toISOString().split('T')[0]
+            }]
+          }
+        : tt
+    ));
   };
 
   const handleReject = (id: string) => {
-    // Rejection logic here
-    console.log('Rejecting timetable:', id);
+    const reason = prompt('Please provide a reason for rejection:');
+    if (reason) {
+      setTimetables(prev => prev.map(tt => 
+        tt.id === id 
+          ? { 
+              ...tt, 
+              status: 'rejected', 
+              rejectedOn: new Date().toISOString().split('T')[0],
+              comments: [...tt.comments, {
+                author: 'Current User',
+                text: reason,
+                date: new Date().toISOString().split('T')[0]
+              }]
+            }
+          : tt
+      ));
+    }
   };
 
   const addComment = (id: string) => {
     if (comment.trim()) {
-      // Add comment logic here
-      console.log('Adding comment to:', id, comment);
+      setTimetables(prev => prev.map(tt => 
+        tt.id === id 
+          ? { 
+              ...tt, 
+              comments: [...tt.comments, {
+                author: 'Current User',
+                text: comment.trim(),
+                date: new Date().toISOString().split('T')[0]
+              }]
+            }
+          : tt
+      ));
       setComment('');
     }
   };

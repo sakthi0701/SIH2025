@@ -21,7 +21,10 @@ const ConstraintModal: React.FC<ConstraintModalProps> = ({ isOpen, onClose, onAd
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onAdd(formData);
+    onAdd({
+      ...formData,
+      id: Date.now().toString()
+    });
     setFormData({
       name: '',
       type: 'soft',

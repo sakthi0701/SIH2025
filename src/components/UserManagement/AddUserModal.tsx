@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save, User } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -7,11 +8,14 @@ interface AddUserModalProps {
 }
 
 const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) => {
+  const { addUser } = useAuth();
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     role: '',
     department: '',
+    status: 'active' as 'active' | 'inactive' | 'suspended',
     password: '',
     confirmPassword: ''
   });
@@ -43,9 +47,43 @@ const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) => {
       alert('Passwords do not match');
       return;
     }
-    console.log('Adding new user:', formData);
-    // Here you would typically call an API to create the user
-    onClose();
+    
+    try {
+      const { password, confirmPassword, ...userData } = formData;
+      addUser({
+        ...userData,
+        permissions: getRolePermissions(formData.role)
+      });
+      
+      // Reset form
+      setFormData({
+        name: '',
+        email: '',
+        role: '',
+        department: '',
+        status: 'active',
+        password: '',
+        confirmPassword: ''
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error adding user:', error);
+      alert('Error adding user. Please try again.');
+    }
+  };
+
+  const getRolePermissions = (role: string): string[] => {
+    const permissionMap: { [key: string]: string[] } = {
+      'Super Admin': ['all'],
+      'Institution Admin': ['manage_institution', 'manage_users', 'view_reports'],
+      'Timetable Admin': ['create_timetables', 'run_optimizer', 'manual_edit'],
+      'Department Admin': ['manage_department', 'approve_timetables'],
+      'Approver': ['approve_timetables', 'view_reports'],
+      'Faculty': ['view_schedule', 'set_preferences'],
+      'Student': ['view_schedule']
+    };
+    return permissionMap[role] || [];
   };
 
   const handleInputChange = (key: string, value: string) => {

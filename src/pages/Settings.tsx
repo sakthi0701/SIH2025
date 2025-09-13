@@ -36,8 +36,14 @@ const Settings: React.FC = () => {
   ];
 
   const handleSave = () => {
-    // Save settings logic here
-    console.log('Saving settings:', settings);
+    try {
+      // Here you would typically save to a backend or localStorage
+      localStorage.setItem('timetable-settings', JSON.stringify(settings));
+      alert('Settings saved successfully!');
+    } catch (error) {
+      console.error('Error saving settings:', error);
+      alert('Error saving settings. Please try again.');
+    }
   };
 
   return (

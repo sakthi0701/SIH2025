@@ -159,7 +159,7 @@ const ConstraintsBuilder: React.FC = () => {
           isOpen={showModal}
           onClose={() => setShowModal(false)}
           onAdd={(constraint) => {
-            setConstraints(prev => [...prev, { ...constraint, id: Date.now().toString() }]);
+            setConstraints(prev => [...prev, constraint]);
             setShowModal(false);
           }}
         />

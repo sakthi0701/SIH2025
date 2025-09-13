@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Trash2, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface DeleteUserModalProps {
   isOpen: boolean;
@@ -14,7 +15,20 @@ const DeleteUserModal: React.FC<DeleteUserModalProps> = ({
   user, 
   onConfirm 
 }) => {
+  const { deleteUser } = useAuth();
+  
   if (!isOpen) return null;
+
+  const handleConfirm = () => {
+    try {
+      deleteUser(user.id);
+      onConfirm();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      alert('Error deleting user. Please try again.');
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -67,7 +81,7 @@ const DeleteUserModal: React.FC<DeleteUserModalProps> = ({
               Cancel
             </button>
             <button
-              onClick={onConfirm}
+              onClick={handleConfirm}
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
             >
               <Trash2 className="h-4 w-4 mr-2" />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save } from 'lucide-react';
+import { useData } from '../../context/DataContext';
 
 interface EditDataModalProps {
   isOpen: boolean;
@@ -9,6 +10,14 @@ interface EditDataModalProps {
 }
 
 const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, type }) => {
+  const { 
+    updateDepartment, 
+    updateCourse, 
+    updateFaculty, 
+    updateRoom, 
+    updateBatch 
+  } = useData();
+  
   const [formData, setFormData] = useState<any>({});
 
   useEffect(() => {
@@ -64,9 +73,33 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(`Updating ${type}:`, formData);
-    // Here you would typically call an API to update the data
-    onClose();
+    
+    try {
+      switch (type) {
+        case 'departments':
+          updateDepartment(item.id, formData);
+          break;
+        case 'courses':
+          updateCourse(item.id, formData);
+          break;
+        case 'faculty':
+          updateFaculty(item.id, formData);
+          break;
+        case 'rooms':
+          updateRoom(item.id, formData);
+          break;
+        case 'batches':
+          updateBatch(item.id, formData);
+          break;
+        default:
+          throw new Error(`Unknown type: ${type}`);
+      }
+      
+      onClose();
+    } catch (error) {
+      console.error('Error updating data:', error);
+      alert('Error updating data. Please try again.');
+    }
   };
 
   const handleInputChange = (key: string, value: any) => {

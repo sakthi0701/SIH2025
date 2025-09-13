@@ -1,70 +1,19 @@
 import React, { useState } from 'react';
 import { Plus, Search, Filter, Edit, Trash2, UserPlus, Shield } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import AddUserModal from '../components/UserManagement/AddUserModal';
 import ViewUserModal from '../components/UserManagement/ViewUserModal';
 import EditUserModal from '../components/UserManagement/EditUserModal';
 import DeleteUserModal from '../components/UserManagement/DeleteUserModal';
 
 const UserManagement: React.FC = () => {
+  const { users } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewUser, setViewUser] = useState<any>(null);
   const [editUser, setEditUser] = useState<any>(null);
   const [deleteUser, setDeleteUser] = useState<any>(null);
-
-  const users = [
-    {
-      id: 1,
-      name: 'Dr. Sarah Admin',
-      email: 'sarah.admin@university.edu',
-      role: 'Super Admin',
-      department: 'Administration',
-      status: 'active',
-      lastLogin: '2024-01-15 09:30',
-      permissions: ['all']
-    },
-    {
-      id: 2,
-      name: 'Dr. John Smith',
-      email: 'john.smith@university.edu',
-      role: 'Department Admin',
-      department: 'Computer Science',
-      status: 'active',
-      lastLogin: '2024-01-15 08:45',
-      permissions: ['manage_department', 'approve_timetables']
-    },
-    {
-      id: 3,
-      name: 'Prof. Alice Johnson',
-      email: 'alice.johnson@university.edu',
-      role: 'Faculty',
-      department: 'Electronics',
-      status: 'active',
-      lastLogin: '2024-01-14 14:20',
-      permissions: ['view_schedule', 'set_preferences']
-    },
-    {
-      id: 4,
-      name: 'Dr. Bob Wilson',
-      email: 'bob.wilson@university.edu',
-      role: 'Timetable Admin',
-      department: 'Administration',
-      status: 'active',
-      lastLogin: '2024-01-15 10:15',
-      permissions: ['create_timetables', 'run_optimizer', 'manual_edit']
-    },
-    {
-      id: 5,
-      name: 'Ms. Carol Brown',
-      email: 'carol.brown@university.edu',
-      role: 'Student',
-      department: 'Computer Science',
-      status: 'active',
-      lastLogin: '2024-01-15 12:00',
-      permissions: ['view_schedule']
-    }
-  ];
 
   const roles = [
     { value: '', label: 'All Roles' },
@@ -357,7 +306,6 @@ const UserManagement: React.FC = () => {
           onClose={() => setDeleteUser(null)}
           user={deleteUser}
           onConfirm={() => {
-            console.log('Deleting user:', deleteUser);
             setDeleteUser(null);
           }}
         />

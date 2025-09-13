@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Trash2, AlertTriangle } from 'lucide-react';
+import { useData } from '../../context/DataContext';
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -14,8 +15,16 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   onClose, 
   item, 
   type, 
-  onConfirm 
+  onConfirm
 }) => {
+  const { 
+    deleteDepartment, 
+    deleteCourse, 
+    deleteFaculty, 
+    deleteRoom, 
+    deleteBatch 
+  } = useData();
+  
   if (!isOpen) return null;
 
   const getItemName = (item: any, type: string) => {
@@ -25,6 +34,36 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
   };
 
   const itemName = getItemName(item, type);
+  
+  const handleConfirm = () => {
+    try {
+      switch (type) {
+        case 'departments':
+          deleteDepartment(item.id);
+          break;
+        case 'courses':
+          deleteCourse(item.id);
+          break;
+        case 'faculty':
+          deleteFaculty(item.id);
+          break;
+        case 'rooms':
+          deleteRoom(item.id);
+          break;
+        case 'batches':
+          deleteBatch(item.id);
+          break;
+        default:
+          throw new Error(`Unknown type: ${type}`);
+      }
+      
+      onConfirm();
+      onClose();
+    } catch (error) {
+      console.error('Error deleting data:', error);
+      alert('Error deleting data. Please try again.');
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -72,7 +111,7 @@ const DeleteConfirmModal: React.FC<DeleteConfirmModalProps> = ({
               Cancel
             </button>
             <button
-              onClick={onConfirm}
+              onClick={handleConfirm}
               className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition-colors"
             >
               <Trash2 className="h-4 w-4 mr-2" />

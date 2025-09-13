@@ -131,19 +131,25 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
               ))}
               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                 <div className="flex items-center space-x-3">
-                  <button className="text-blue-600 hover:text-blue-800 transition-colors">
+                  <button 
+                    className="text-blue-600 hover:text-blue-800 transition-colors"
                     title="View Details"
                     onClick={() => setViewItem(item)}
+                  >
                     <Eye className="h-4 w-4" />
-                    onClick={() => setEditItem(item)}
                   </button>
+                  <button 
+                    className="text-emerald-600 hover:text-emerald-800 transition-colors"
                     title="Edit"
-                  <button className="text-emerald-600 hover:text-emerald-800 transition-colors">
+                    onClick={() => setEditItem(item)}
+                  >
                     <Edit className="h-4 w-4" />
-                    onClick={() => setDeleteItem(item)}
                   </button>
+                  <button 
+                    className="text-red-600 hover:text-red-800 transition-colors"
                     title="Delete"
-                  <button className="text-red-600 hover:text-red-800 transition-colors">
+                    onClick={() => setDeleteItem(item)}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </button>
                   <button className="text-gray-600 hover:text-gray-800 transition-colors">
@@ -196,7 +202,6 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
           item={deleteItem}
           type={type}
           onConfirm={() => {
-            console.log(`Deleting ${type}:`, deleteItem);
             setDeleteItem(null);
           }}
         />

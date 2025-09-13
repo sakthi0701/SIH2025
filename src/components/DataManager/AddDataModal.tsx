@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { X, Save } from 'lucide-react';
+import { useData } from '../../context/DataContext';
 
 interface AddDataModalProps {
   isOpen: boolean;
@@ -8,6 +9,14 @@ interface AddDataModalProps {
 }
 
 const AddDataModal: React.FC<AddDataModalProps> = ({ isOpen, onClose, type }) => {
+  const { 
+    addDepartment, 
+    addCourse, 
+    addFaculty, 
+    addRoom, 
+    addBatch 
+  } = useData();
+  
   const [formData, setFormData] = useState<any>({});
 
   if (!isOpen) return null;
@@ -57,9 +66,43 @@ const AddDataModal: React.FC<AddDataModalProps> = ({ isOpen, onClose, type }) =>
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(`Adding new ${type}:`, formData);
-    // Here you would typically call an API to save the data
-    onClose();
+    
+    try {
+      switch (type) {
+        case 'departments':
+          addDepartment(formData);
+          break;
+        case 'courses':
+          addCourse(formData);
+          break;
+        case 'faculty':
+          addFaculty({
+            ...formData,
+            courses: [],
+            availability: ['Mon-Fri 9-17'],
+            preferences: []
+          });
+          break;
+        case 'rooms':
+          addRoom({
+            ...formData,
+            equipment: []
+          });
+          break;
+        case 'batches':
+          addBatch(formData);
+          break;
+        default:
+          throw new Error(`Unknown type: ${type}`);
+      }
+      
+      // Reset form
+      setFormData({});
+      onClose();
+    } catch (error) {
+      console.error('Error adding data:', error);
+      alert('Error adding data. Please try again.');
+    }
   };
 
   const handleInputChange = (key: string, value: any) => {

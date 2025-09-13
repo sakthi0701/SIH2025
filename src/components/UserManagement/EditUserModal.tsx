@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, User } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 interface EditUserModalProps {
   isOpen: boolean;
@@ -8,6 +9,8 @@ interface EditUserModalProps {
 }
 
 const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user }) => {
+  const { updateUser } = useAuth();
+  
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -51,9 +54,14 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user }) 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Updating user:', formData);
-    // Here you would typically call an API to update the user
-    onClose();
+    
+    try {
+      updateUser(user.id, formData);
+      onClose();
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('Error updating user. Please try again.');
+    }
   };
 
   const handleInputChange = (key: string, value: string) => {
