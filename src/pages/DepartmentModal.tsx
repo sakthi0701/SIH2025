@@ -65,3 +65,4 @@ const DepartmentModal: React.FC<DepartmentModalProps> = ({ mode, department, onC
 };
 
 export default DepartmentModal;
+
