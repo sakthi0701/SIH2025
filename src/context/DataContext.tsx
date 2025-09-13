@@ -1,39 +1,57 @@
 import React, { createContext, useContext, ReactNode, useState } from 'react';
 
-// --- INTERFACES FOR DATA MODELS ---
+// --- NEW, HIERARCHICAL INTERFACES ---
 
-interface Department {
+export interface Course {
+  id: string;
+  code: string;
+  name: string;
+  credits: number;
+  weeklyHours: number;
+  type: 'Theory' | 'Lab' | 'Practical';
+}
+
+export interface Semester {
+  id: string;
+  semesterNumber: number;
+  courses: Course[];
+}
+
+export interface Regulation {
+  id: string;
+  name: string; // e.g., "R2021", "R2023"
+  year: number;
+  semesters: Semester[];
+}
+
+export interface Batch {
+  id: string;
+  name: string; // e.g., "CSE-2024-A"
+  regulationId: string; // Links to a specific regulation
+  studentCount: number;
+}
+
+export interface Faculty {
+  id: string;
+  name: string;
+  email: string;
+  maxLoad: number;
+  // An array of course IDs they can teach from ANY department
+  assignedCourses: string[]; 
+}
+
+export interface Department {
   id: string;
   name: string;
   code: string;
   head: string;
-  facultyCount: number;
-  studentCount: number;
+  regulations: Regulation[];
+  batches: Batch[];
+  faculty: Faculty[];
 }
 
-interface Course {
-  id: string;
-  code: string;
-  name: string;
-  department: string;
-  credits: number;
-  type: 'Theory' | 'Lab' | 'Practical';
-  duration: number;
-  weeklyHours: number;
-}
-
-interface Faculty {
-  id: string;
-  name: string;
-  email: string;
-  department: string;
-  maxLoad: number;
-  courses: string[];
-  availability: string[];
-  preferences: string[];
-}
-
-interface Room {
+// Rooms remain global as they are a shared resource
+export interface Room {
   id: string;
   name: string;
   type: 'Classroom' | 'Lab' | 'Auditorium' | 'Seminar Hall';
@@ -42,20 +60,11 @@ interface Room {
   equipment: string[];
 }
 
-interface Batch {
-  id: string;
-  name: string;
-  program: string;
-  year: number;
-  department: string;
-  studentCount: number;
-}
-
-// Interface for the final generated timetable
-interface TimetableSolution {
+// For the final generated timetable
+export interface TimetableSolution {
   id: number;
   name: string;
-  timetable: any; // Can be refined to a specific Timetable type later
+  timetable: any; // Can be refined later
   score: number;
 }
 
@@ -64,37 +73,31 @@ interface TimetableSolution {
 
 interface DataContextType {
   departments: Department[];
-  courses: Course[];
-  faculty: Faculty[];
   rooms: Room[];
-  batches: Batch[];
   
   // Department operations
-  addDepartment: (department: Omit<Department, 'id'>) => void;
-  updateDepartment: (id: string, updates: Partial<Department>) => void;
+  addDepartment: (department: Omit<Department, 'id' | 'regulations' | 'batches' | 'faculty'>) => void;
+  updateDepartment: (id: string, updates: Partial<Omit<Department, 'id'>>) => void;
   deleteDepartment: (id: string) => void;
   
+  // Regulation operations
+  addRegulationToDepartment: (departmentId: string, regulation: Omit<Regulation, 'id' | 'semesters'>) => void;
+  
   // Course operations
-  addCourse: (course: Omit<Course, 'id'>) => void;
-  updateCourse: (id: string, updates: Partial<Course>) => void;
-  deleteCourse: (id: string) => void;
-  
+  addCourseToRegulation: (departmentId: string, regulationId: string, semesterNumber: number, course: Omit<Course, 'id'>) => void;
+
+  // Batch operations
+  addBatchToDepartment: (departmentId: string, batch: Omit<Batch, 'id'>) => void;
+
   // Faculty operations
-  addFaculty: (faculty: Omit<Faculty, 'id'>) => void;
-  updateFaculty: (id: string, updates: Partial<Faculty>) => void;
-  deleteFaculty: (id: string) => void;
-  
-  // Room operations
+  addFacultyToDepartment: (departmentId: string, faculty: Omit<Faculty, 'id'>) => void;
+
+  // Room operations (remain global)
   addRoom: (room: Omit<Room, 'id'>) => void;
   updateRoom: (id: string, updates: Partial<Room>) => void;
   deleteRoom: (id: string) => void;
   
-  // Batch operations
-  addBatch: (batch: Omit<Batch, 'id'>) => void;
-  updateBatch: (id: string, updates: Partial<Batch>) => void;
-  deleteBatch: (id: string) => void;
-
-  // Generated Timetable State
+  // Timetable State
   generatedTimetable: TimetableSolution | null;
   setGeneratedTimetable: (timetable: TimetableSolution | null) => void;
 }
@@ -114,116 +117,175 @@ interface DataProviderProps {
 }
 
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
-  // --- STATE MANAGEMENT FOR ALL DATA ---
+
+  // --- RESTRUCTURED STATE MANAGEMENT ---
 
   const [departments, setDepartments] = useState<Department[]>([
-    { id: '1', name: 'Computer Science', code: 'CSE', head: 'Dr. Smith', facultyCount: 25, studentCount: 300 },
-    { id: '2', name: 'Electronics', code: 'ECE', head: 'Dr. Johnson', facultyCount: 20, studentCount: 250 },
+    { 
+      id: 'dept-cse', 
+      name: 'Computer Science', 
+      code: 'CSE', 
+      head: 'Dr. Alan Turing',
+      regulations: [
+        {
+          id: 'reg-cse-2021', name: 'R2021', year: 2021,
+          semesters: [
+            {
+              id: 'sem-cse-2021-1', semesterNumber: 1,
+              courses: [
+                { id: 'cse101', name: 'Programming Fundamentals', code: 'CSE101', credits: 4, weeklyHours: 3, type: 'Theory' },
+                { id: 'cse102', name: 'Programming Fundamentals Lab', code: 'CSE102', credits: 2, weeklyHours: 2, type: 'Lab' },
+              ]
+            },
+            {
+              id: 'sem-cse-2021-3', semesterNumber: 3,
+              courses: [
+                { id: 'cse201', name: 'Data Structures', code: 'CSE201', credits: 4, weeklyHours: 3, type: 'Theory' },
+                { id: 'cse202', name: 'Database Systems', code: 'CSE202', credits: 4, weeklyHours: 3, type: 'Theory' },
+                { id: 'mat201', name: 'Discrete Mathematics', code: 'MAT201', credits: 3, weeklyHours: 3, type: 'Theory' },
+              ]
+            }
+          ]
+        }
+      ],
+      batches: [
+        { id: 'batch-cse-2023', name: 'CSE-2023', regulationId: 'reg-cse-2021', studentCount: 60 },
+        { id: 'batch-cse-2024', name: 'CSE-2024', regulationId: 'reg-cse-2021', studentCount: 55 },
+      ],
+      faculty: [
+        { id: 'fac-smith', name: 'Dr. Alice Smith', email: 'alice@uni.edu', maxLoad: 18, assignedCourses: ['cse101', 'cse201'] },
+        { id: 'fac-bob', name: 'Prof. Bob Builder', email: 'bob@uni.edu', maxLoad: 16, assignedCourses: ['cse102', 'cse202'] },
+      ]
+    },
+    { 
+      id: 'dept-ece', 
+      name: 'Electronics', 
+      code: 'ECE', 
+      head: 'Dr. Marie Curie',
+      regulations: [],
+      batches: [],
+      faculty: [
+        { id: 'fac-carol', name: 'Dr. Carol Danvers', email: 'carol@uni.edu', maxLoad: 18, assignedCourses: ['mat201'] },
+      ]
+    },
   ]);
-
-  const [courses, setCourses] = useState<Course[]>([
-    { id: '1', code: 'CSE101', name: 'Programming Fundamentals', department: 'Computer Science', credits: 4, type: 'Theory', duration: 60, weeklyHours: 3 },
-    { id: '2', code: 'CSE102', name: 'Data Structures', department: 'Computer Science', credits: 4, type: 'Theory', duration: 60, weeklyHours: 3 },
-  ]);
-
-  const [faculty, setFaculty] = useState<Faculty[]>([
-    { id: '1', name: 'Dr. Alice Smith', email: 'alice@uni.edu', department: 'Computer Science', maxLoad: 18, courses: ['CSE101', 'CSE102'], availability: ['Mon-Fri 9-17'], preferences: ['Morning slots'] },
-  ]);
-
+  
   const [rooms, setRooms] = useState<Room[]>([
-    { id: '1', name: 'Room A101', type: 'Classroom', capacity: 60, building: 'Academic Block A', equipment: ['Projector', 'Whiteboard', 'AC'] },
-  ]);
-
-  const [batches, setBatches] = useState<Batch[]>([
-    { id: '1', name: 'CSE-2024-A', program: 'B.Tech Computer Science', year: 1, department: 'Computer Science', studentCount: 50 },
+    { id: 'room-a101', name: 'Room A101', type: 'Classroom', capacity: 65, building: 'Academic Block A', equipment: ['Projector', 'Whiteboard'] },
+    { id: 'room-b202', name: 'Room B202', type: 'Classroom', capacity: 60, building: 'Academic Block B', equipment: ['Projector'] },
+    { id: 'room-cslab1', name: 'CS Lab 1', type: 'Lab', capacity: 60, building: 'Tech Park', equipment: ['Computers', 'Projector'] },
   ]);
 
   const [generatedTimetable, setGeneratedTimetable] = useState<TimetableSolution | null>(null);
 
-  // --- CRUD FUNCTIONS ---
+  // --- UPDATED CRUD FUNCTIONS ---
 
-  // Department operations
-  const addDepartment = (department: Omit<Department, 'id'>) => {
-    const newDepartment = { ...department, id: Date.now().toString() };
+  const addDepartment = (dept: Omit<Department, 'id' | 'regulations' | 'batches' | 'faculty'>) => {
+    const newDepartment: Department = {
+      ...dept,
+      id: `dept-${Date.now()}`,
+      regulations: [],
+      batches: [],
+      faculty: []
+    };
     setDepartments(prev => [...prev, newDepartment]);
   };
-  const updateDepartment = (id: string, updates: Partial<Department>) => {
-    setDepartments(prev => prev.map(dept => dept.id === id ? { ...dept, ...updates } : dept));
+  
+  const updateDepartment = (id: string, updates: Partial<Omit<Department, 'id'>>) => {
+    setDepartments(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
   };
+
   const deleteDepartment = (id: string) => {
-    setDepartments(prev => prev.filter(dept => dept.id !== id));
+    setDepartments(prev => prev.filter(d => d.id !== id));
+  };
+  
+  const addRegulationToDepartment = (departmentId: string, regulation: Omit<Regulation, 'id' | 'semesters'>) => {
+    const newRegulation: Regulation = {
+      ...regulation,
+      id: `reg-${departmentId}-${Date.now()}`,
+      semesters: Array.from({ length: 8 }, (_, i) => ({
+        id: `sem-${departmentId}-${regulation.name}-${i + 1}`,
+        semesterNumber: i + 1,
+        courses: []
+      }))
+    };
+    setDepartments(prev => prev.map(dept => 
+      dept.id === departmentId 
+        ? { ...dept, regulations: [...dept.regulations, newRegulation] } 
+        : dept
+    ));
   };
 
-  // Course operations
-  const addCourse = (course: Omit<Course, 'id'>) => {
-    const newCourse = { ...course, id: Date.now().toString() };
-    setCourses(prev => [...prev, newCourse]);
+  const addCourseToRegulation = (departmentId: string, regulationId: string, semesterNumber: number, course: Omit<Course, 'id'>) => {
+    const newCourse: Course = { ...course, id: `course-${Date.now()}` };
+    setDepartments(prev => prev.map(dept => {
+      if (dept.id === departmentId) {
+        return {
+          ...dept,
+          regulations: dept.regulations.map(reg => {
+            if (reg.id === regulationId) {
+              return {
+                ...reg,
+                semesters: reg.semesters.map(sem => {
+                  if (sem.semesterNumber === semesterNumber) {
+                    return { ...sem, courses: [...sem.courses, newCourse] };
+                  }
+                  return sem;
+                })
+              };
+            }
+            return reg;
+          })
+        };
+      }
+      return dept;
+    }));
   };
-  const updateCourse = (id: string, updates: Partial<Course>) => {
-    setCourses(prev => prev.map(course => course.id === id ? { ...course, ...updates } : course));
-  };
-  const deleteCourse = (id: string) => {
-    setCourses(prev => prev.filter(course => course.id !== id));
+  
+  const addBatchToDepartment = (departmentId: string, batch: Omit<Batch, 'id'>) => {
+    const newBatch: Batch = { ...batch, id: `batch-${departmentId}-${Date.now()}` };
+    setDepartments(prev => prev.map(dept => 
+      dept.id === departmentId 
+        ? { ...dept, batches: [...dept.batches, newBatch] } 
+        : dept
+    ));
   };
 
-  // Faculty operations
-  const addFaculty = (facultyMember: Omit<Faculty, 'id'>) => {
-    const newFaculty = { ...facultyMember, id: Date.now().toString() };
-    setFaculty(prev => [...prev, newFaculty]);
-  };
-  const updateFaculty = (id: string, updates: Partial<Faculty>) => {
-    setFaculty(prev => prev.map(fac => fac.id === id ? { ...fac, ...updates } : fac));
-  };
-  const deleteFaculty = (id: string) => {
-    setFaculty(prev => prev.filter(fac => fac.id !== id));
+  const addFacultyToDepartment = (departmentId: string, faculty: Omit<Faculty, 'id'>) => {
+    const newFaculty: Faculty = { ...faculty, id: `faculty-${Date.now()}` };
+     setDepartments(prev => prev.map(dept => 
+      dept.id === departmentId 
+        ? { ...dept, faculty: [...dept.faculty, newFaculty] } 
+        : dept
+    ));
   };
 
-  // Room operations
+  // Room operations (can remain the same)
   const addRoom = (room: Omit<Room, 'id'>) => {
-    const newRoom = { ...room, id: Date.now().toString() };
+    const newRoom = { ...room, id: `room-${Date.now()}` };
     setRooms(prev => [...prev, newRoom]);
   };
   const updateRoom = (id: string, updates: Partial<Room>) => {
-    setRooms(prev => prev.map(room => room.id === id ? { ...room, ...updates } : room));
+    setRooms(prev => prev.map(r => r.id === id ? { ...r, ...updates } : r));
   };
   const deleteRoom = (id: string) => {
-    setRooms(prev => prev.filter(room => room.id !== id));
-  };
-
-  // Batch operations
-  const addBatch = (batch: Omit<Batch, 'id'>) => {
-    const newBatch = { ...batch, id: Date.now().toString() };
-    setBatches(prev => [...prev, newBatch]);
-  };
-  const updateBatch = (id: string, updates: Partial<Batch>) => {
-    setBatches(prev => prev.map(batch => batch.id === id ? { ...batch, ...updates } : batch));
-  };
-  const deleteBatch = (id: string) => {
-    setBatches(prev => prev.filter(batch => batch.id !== id));
+    setRooms(prev => prev.filter(r => r.id !== id));
   };
 
   // --- CONTEXT VALUE ---
   const value = {
     departments,
-    courses,
-    faculty,
     rooms,
-    batches,
     addDepartment,
     updateDepartment,
     deleteDepartment,
-    addCourse,
-    updateCourse,
-    deleteCourse,
-    addFaculty,
-    updateFaculty,
-    deleteFaculty,
+    addRegulationToDepartment,
+    addCourseToRegulation,
+    addBatchToDepartment,
+    addFacultyToDepartment,
     addRoom,
     updateRoom,
     deleteRoom,
-    addBatch,
-    updateBatch,
-    deleteBatch,
     generatedTimetable,
     setGeneratedTimetable
   };
@@ -234,4 +296,3 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     </DataContext.Provider>
   );
 };
-
