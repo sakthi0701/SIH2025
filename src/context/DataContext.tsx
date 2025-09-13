@@ -166,7 +166,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const updatedRegulations = department.regulations.map(reg => reg.id === regulationId ? { ...reg, ...updates } : reg);
     await updateDepartment(departmentId, { regulations: updatedRegulations });
   };
-
+  
   const updateCourseInRegulation = async (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
