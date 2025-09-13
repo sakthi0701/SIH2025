@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useData, Course } from '../context/DataContext';
+import { useData, Course, Regulation, Batch, Faculty } from '../context/DataContext';
 import { ArrowLeft, Plus, ChevronRight, Edit2, Trash2, AlertTriangle, UserPlus, ChevronDown } from 'lucide-react';
 import EditDataModal from '../components/DataManager/EditDataModal';
+import BatchModal from '../components/DataManager/BatchModal';
+import FacultyModal from '../components/DataManager/FacultyModal';
 
 // --- Reusable Modals (Can be moved to separate files later) ---
 
@@ -42,109 +44,6 @@ const AddRegulationModal: React.FC<{ departmentId: string; onClose: () => void }
   );
 };
 
-const AddBatchModal: React.FC<{ departmentId: string; regulations: any[], onClose: () => void }> = ({ departmentId, regulations, onClose }) => {
-    const { addBatchToDepartment } = useData();
-    const [formData, setFormData] = useState({ name: '', regulationId: '', studentCount: 60 });
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (formData.name && formData.regulationId) {
-            addBatchToDepartment(departmentId, formData);
-            onClose();
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-                <div className="p-6 border-b"><h3 className="text-lg font-semibold">Add New Batch</h3></div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Batch Name (e.g., CSE-2024)</label>
-                        <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Regulation</label>
-                        <select value={formData.regulationId} onChange={(e) => setFormData({...formData, regulationId: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required>
-                            <option value="">Select a Regulation</option>
-                            {regulations.map(reg => <option key={reg.id} value={reg.id}>{reg.name}</option>)}
-                        </select>
-                    </div>
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Student Count</label>
-                        <input type="number" value={formData.studentCount} onChange={(e) => setFormData({...formData, studentCount: parseInt(e.target.value)})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-100 rounded-lg">Cancel</button>
-                        <button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg">Add Batch</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
-const AddFacultyModal: React.FC<{ departmentId: string; allCourses: any[], onClose: () => void; }> = ({ departmentId, allCourses, onClose }) => {
-    const { addFacultyToDepartment } = useData();
-    const [formData, setFormData] = useState({ name: '', email: '', maxLoad: 18, assignedCourses: [] as string[] });
-
-    const handleCourseToggle = (courseId: string) => {
-        setFormData(prev => ({
-            ...prev,
-            assignedCourses: prev.assignedCourses.includes(courseId)
-                ? prev.assignedCourses.filter(id => id !== courseId)
-                : [...prev.assignedCourses, courseId]
-        }));
-    };
-    
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (formData.name && formData.email) {
-            addFacultyToDepartment(departmentId, formData);
-            onClose();
-        }
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div className="p-6 border-b"><h3 className="text-lg font-semibold">Add New Faculty</h3></div>
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
-                            <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
-                        </div>
-                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                            <input type="email" value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
-                        </div>
-                        <div>
-                           <label className="block text-sm font-medium text-gray-700 mb-1">Max Weekly Load (Hours)</label>
-                            <input type="number" value={formData.maxLoad} onChange={(e) => setFormData({...formData, maxLoad: parseInt(e.target.value)})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
-                        </div>
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Assignable Courses</label>
-                        <div className="max-h-60 overflow-y-auto border border-gray-300 rounded-lg p-2 space-y-1">
-                            {allCourses.map(course => (
-                                <label key={course.id} className="flex items-center space-x-3 p-2 rounded hover:bg-gray-50">
-                                    <input type="checkbox" checked={formData.assignedCourses.includes(course.id)} onChange={() => handleCourseToggle(course.id)} className="h-4 w-4 text-blue-600 border-gray-300 rounded" />
-                                    <span className="text-sm font-medium">{course.name} ({course.deptCode})</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="flex justify-end space-x-2 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-100 rounded-lg">Cancel</button>
-                        <button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg">Add Faculty</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
-};
-
 const DeleteConfirmModal: React.FC<{ item: any; itemType: string; onConfirm: () => void; onClose: () => void; }> = ({ item, itemType, onConfirm, onClose }) => {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -174,10 +73,12 @@ const DepartmentDetailPage: React.FC = () => {
   const { departments, deleteRegulationFromDepartment, deleteBatchFromDepartment, deleteFacultyFromDepartment } = useData();
   const [activeTab, setActiveTab] = useState<'regulations' | 'batches' | 'faculty'>('regulations');
   const [showAddRegulationModal, setShowAddRegulationModal] = useState(false);
-  const [showAddBatchModal, setShowAddBatchModal] = useState(false);
-  const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
+  const [showFacultyModal, setShowFacultyModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ item: any; type: string } | null>(null);
   const [itemToEdit, setItemToEdit] = useState<{ item: any; type: string } | null>(null);
+  const [editingBatch, setEditingBatch] = useState<Batch | null>(null);
+  const [editingFaculty, setEditingFaculty] = useState<Faculty | null>(null);
   const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
 
   const department = departments.find(d => d.id === id);
@@ -230,7 +131,7 @@ const DepartmentDetailPage: React.FC = () => {
               <ChevronRight className="h-5 w-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
             </Link>
             <div className="flex space-x-2 pl-4">
-                <button onClick={() => setItemToEdit({item: reg, type: 'regulations'})} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => setItemToEdit({item: { ...reg, departmentId: department.id }, type: 'regulations'})} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
                 <button onClick={() => setItemToDelete({item: reg, type: 'Regulation'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
             </div>
           </div>
@@ -244,7 +145,7 @@ const DepartmentDetailPage: React.FC = () => {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p>Manage student batches and view their assigned courses.</p>
-        <button onClick={() => setShowAddBatchModal(true)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+        <button onClick={() => { setEditingBatch(null); setShowBatchModal(true); }} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
           <Plus className="h-4 w-4 mr-2" /> Add Batch
         </button>
       </div>
@@ -263,7 +164,7 @@ const DepartmentDetailPage: React.FC = () => {
                     <button onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)} className="p-2 text-gray-500 hover:text-gray-800">
                         <ChevronDown className={`h-5 w-5 transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} />
                     </button>
-                    <button onClick={() => setItemToEdit({item: batch, type: 'batches'})} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => { setEditingBatch(batch); setShowBatchModal(true); }} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
                     <button onClick={() => setItemToDelete({item: batch, type: 'Batch'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
@@ -291,7 +192,7 @@ const DepartmentDetailPage: React.FC = () => {
      <div className="space-y-4">
       <div className="flex justify-between items-center">
         <p>Manage faculty members and their assignable courses.</p>
-        <button onClick={() => setShowAddFacultyModal(true)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+        <button onClick={() => { setEditingFaculty(null); setShowFacultyModal(true); }} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
           <UserPlus className="h-4 w-4 mr-2" /> Add Faculty
         </button>
       </div>
@@ -306,7 +207,7 @@ const DepartmentDetailPage: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">Handles: {assignedCourseNames || 'None'}</p>
               </div>
               <div className="flex space-x-2">
-                <button onClick={() => setItemToEdit({item: fac, type: 'faculty'})} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => { setEditingFaculty(fac); setShowFacultyModal(true); }} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
                 <button onClick={() => setItemToDelete({item: fac, type: 'Faculty'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
               </div>
             </div>
@@ -339,8 +240,8 @@ const DepartmentDetailPage: React.FC = () => {
         {activeTab === 'faculty' && <FacultyTab />}
       </div>
       {showAddRegulationModal && <AddRegulationModal departmentId={department.id} onClose={() => setShowAddRegulationModal(false)} />}
-      {showAddBatchModal && <AddBatchModal departmentId={department.id} regulations={department.regulations} onClose={() => setShowAddBatchModal(false)} />}
-      {showAddFacultyModal && <AddFacultyModal departmentId={department.id} allCourses={allCourses} onClose={() => setShowAddFacultyModal(false)} />}
+      {showBatchModal && <BatchModal mode={editingBatch ? 'edit' : 'add'} batch={editingBatch} departmentId={department.id} regulations={department.regulations} onClose={() => setShowBatchModal(false)} />}
+      {showFacultyModal && <FacultyModal mode={editingFaculty ? 'edit' : 'add'} faculty={editingFaculty} departmentId={department.id} allCourses={allCourses} onClose={() => setShowFacultyModal(false)} />}
       {itemToEdit && <EditDataModal isOpen={!!itemToEdit} onClose={() => setItemToEdit(null)} item={itemToEdit.item} type={itemToEdit.type} />}
       {itemToDelete && <DeleteConfirmModal item={itemToDelete.item} itemType={itemToDelete.type} onConfirm={handleDeleteConfirm} onClose={() => setItemToDelete(null)} />}
     </div>
