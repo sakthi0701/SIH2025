@@ -20,7 +20,6 @@ export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; d
 // --- CONTEXT TYPE ---
 interface DataContextType {
   departments: Department[];
-  // These flattened arrays now include parent context for easy editing
   courses: (Course & { departmentId: string; regulationId: string; department: string; })[];
   faculty: (Faculty & { departmentId: string; department: string; })[];
   rooms: Room[];
@@ -37,18 +36,18 @@ interface DataContextType {
   addRegulationToDepartment: (departmentId: string, regulation: Omit<Regulation, 'id' | 'semesters'>) => Promise<void>;
   updateRegulationInDepartment: (departmentId: string, regulationId: string, updates: Partial<Omit<Regulation, 'id'>>) => Promise<void>;
   deleteRegulationFromDepartment: (departmentId: string, regulationId: string) => Promise<void>;
-
-  // Course Functions (require full context)
+  
+  // Course Functions
   addCourseToRegulation: (departmentId: string, regulationId: string, semesterNumber: number, course: Omit<Course, 'id'>) => Promise<void>;
   updateCourseInRegulation: (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => Promise<void>;
   deleteCourseFromRegulation: (departmentId: string, regulationId: string, courseId: string) => Promise<void>;
-
-  // Batch Functions (require full context)
+  
+  // Batch Functions
   addBatchToDepartment: (departmentId: string, batch: Omit<Batch, 'id'>) => Promise<void>;
   updateBatchInDepartment: (departmentId: string, batchId: string, updates: Partial<Omit<Batch, 'id'>>) => Promise<void>;
   deleteBatchFromDepartment: (departmentId: string, batchId: string) => Promise<void>;
 
-  // Faculty Functions (require full context)
+  // Faculty Functions
   addFacultyToDepartment: (departmentId: string, faculty: Omit<Faculty, 'id'>) => Promise<void>;
   updateFacultyInDepartment: (departmentId: string, facultyId: string, updates: Partial<Omit<Faculty, 'id'>>) => Promise<void>;
   deleteFacultyFromDepartment: (departmentId: string, facultyId: string) => Promise<void>;
@@ -97,9 +96,6 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     fetchData();
   }, []);
 
-  // **CRITICAL CHANGE**: This effect runs whenever `departments` data changes.
-  // It creates flattened arrays for courses, faculty, and batches.
-  // Each item in these new arrays has its parent context (e.g., departmentId) attached.
   useEffect(() => {
     const allCourses = departments.flatMap(dept => 
       dept.regulations.flatMap(reg => 
@@ -108,7 +104,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
             ...course, 
             departmentId: dept.id, 
             regulationId: reg.id,
-            department: dept.name // Also add name for easy display
+            department: dept.name
           }))
         )
       )
@@ -132,9 +128,6 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     setFaculty(allFaculty);
     setBatches(allBatches);
   }, [departments]);
-
-  // --- FULL CRUD FUNCTIONS ---
-  // (These functions are now guaranteed to work because the UI will pass the correct IDs)
 
   const addDepartment = async (dept: Omit<Department, 'id' | 'regulations' | 'batches' | 'faculty'>) => {
     const newDepartment = { ...dept, regulations: [], batches: [], faculty: [] };
@@ -166,13 +159,16 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const updatedRegulations = department.regulations.map(reg => reg.id === regulationId ? { ...reg, ...updates } : reg);
     await updateDepartment(departmentId, { regulations: updatedRegulations });
   };
-  
+
   const updateCourseInRegulation = async (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
     const updatedRegulations = department.regulations.map(reg => {
       if (reg.id === regulationId) {
-        reg.semesters = reg.semesters.map(sem => ({ ...sem, courses: sem.courses.map(c => c.id === courseId ? { ...c, ...updates } : c) }));
+        reg.semesters = reg.semesters.map(sem => ({
+          ...sem,
+          courses: sem.courses.map(c => c.id === courseId ? { ...c, ...updates } : c)
+        }));
       }
       return reg;
     });
@@ -193,8 +189,6 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     await updateDepartment(departmentId, { batches: updatedBatches });
   };
 
-  // ... (rest of the add, delete, and other functions remain the same)
-  // --- DELETE FUNCTIONS ---
   const deleteRegulationFromDepartment = async (departmentId: string, regulationId: string) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
