@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building, MapPin, Plus, Search, ChevronRight, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { useData } from '../context/DataContext';
+import EditDataModal from '../components/DataManager/EditDataModal';
 
 // --- Reusable Modals (Can be moved to separate files later) ---
 
@@ -94,6 +95,7 @@ const DataManagerPage: React.FC = () => {
   const [showAddRoomModal, setShowAddRoomModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [itemToDelete, setItemToDelete] = useState<{ item: any; type: string } | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<{ item: any; type: string } | null>(null);
 
   const handleDeleteConfirm = () => {
     if (itemToDelete) {
@@ -118,7 +120,7 @@ const DataManagerPage: React.FC = () => {
               <div><p className="font-semibold text-gray-900">{dept.name}</p><p className="text-sm text-gray-500">{dept.batches.length} Batches • {dept.faculty.length} Faculty</p></div>
             </Link>
             <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => setItemToEdit({ item: dept, type: 'departments' })} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
                 <button onClick={() => setItemToDelete({ item: dept, type: 'Department' })} className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
             </div>
         </div>
@@ -132,7 +134,7 @@ const DataManagerPage: React.FC = () => {
             <div key={room.id} className="flex items-center justify-between p-4 group">
                 <div className="flex items-center space-x-4"><div className="p-3 bg-emerald-100 rounded-lg"><MapPin className="h-6 w-6 text-emerald-600" /></div><div><p className="font-semibold text-gray-900">{room.name}</p><p className="text-sm text-gray-500">{room.type} • Capacity: {room.capacity} • {room.building}</p></div></div>
                 <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => setItemToEdit({ item: room, type: 'rooms' })} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
                     <button onClick={() => setItemToDelete({ item: room, type: 'Room' })} className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                 </div>
             </div>
@@ -161,6 +163,7 @@ const DataManagerPage: React.FC = () => {
 
       {showAddDeptModal && <AddDepartmentModal onClose={() => setShowAddDeptModal(false)} />}
       {showAddRoomModal && <AddRoomModal onClose={() => setShowAddRoomModal(false)} />}
+      {itemToEdit && <EditDataModal isOpen={!!itemToEdit} onClose={() => setItemToEdit(null)} item={itemToEdit.item} type={itemToEdit.type} />}
       {itemToDelete && <DeleteConfirmModal item={itemToDelete.item} itemType={itemToDelete.type} onConfirm={handleDeleteConfirm} onClose={() => setItemToDelete(null)} />}
     </div>
   );
