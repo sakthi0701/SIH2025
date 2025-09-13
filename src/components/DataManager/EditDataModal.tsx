@@ -10,6 +10,9 @@ interface EditDataModalProps {
 }
 
 const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, type }) => {
+  // NOTE: This modal currently assumes top-level data editing.
+  // For nested items like courses, you would need to pass in parent IDs (departmentId, etc.)
+  // and call the more specific update functions like `updateCourseInRegulation`.
   const { 
     updateDepartment, 
     updateCourse, 
