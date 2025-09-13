@@ -2,100 +2,17 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Building, MapPin, Plus, Search, ChevronRight, Edit2, Trash2, AlertTriangle } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import EditDataModal from '../components/DataManager/EditDataModal';
-
-// --- Reusable Modals (Can be moved to separate files later) ---
-
-const AddDepartmentModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { addDepartment } = useData();
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
-  const [head, setHead] = useState('');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (name && code && head) {
-      addDepartment({ name, code, head });
-      onClose();
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-        <div className="p-6 border-b"><h3 className="text-lg font-semibold">Add New Department</h3></div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Department Name</label><input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" required /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Department Code</label><input type="text" value={code} onChange={(e) => setCode(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" required /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Head of Department</label><input type="text" value={head} onChange={(e) => setHead(e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2" required /></div>
-          <div className="flex justify-end space-x-2 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-100 rounded-lg">Cancel</button><button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg">Add</button></div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
-const AddRoomModal: React.FC<{ onClose: () => void }> = ({ onClose }) => {
-  const { addRoom } = useData();
-  const [formData, setFormData] = useState({ name: '', type: 'Classroom' as any, capacity: 60, building: '', equipment: [] as string[] });
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (formData.name && formData.building && formData.capacity > 0) {
-      addRoom(formData);
-      onClose();
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-        <div className="p-6 border-b"><h3 className="text-lg font-semibold">Add New Room</h3></div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Room Name</label><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Building</label><input type="text" value={formData.building} onChange={(e) => setFormData({...formData, building: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label><input type="number" value={formData.capacity} onChange={(e) => setFormData({...formData, capacity: parseInt(e.target.value)})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required /></div>
-            <div><label className="block text-sm font-medium text-gray-700 mb-1">Type</label><select value={formData.type} onChange={(e) => setFormData({...formData, type: e.target.value as any})} className="w-full border border-gray-300 rounded-lg px-3 py-2"><option>Classroom</option><option>Lab</option><option>Auditorium</option><option>Seminar Hall</option></select></div>
-            <div className="flex justify-end space-x-2 pt-4"><button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-100 rounded-lg">Cancel</button><button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg">Add Room</button></div>
-        </form>
-      </div>
-    </div>
-  )
-};
-
-const DeleteConfirmModal: React.FC<{ item: any; itemType: string; onConfirm: () => void; onClose: () => void; }> = ({ item, itemType, onConfirm, onClose }) => {
-    return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
-                <div className="p-6">
-                    <div className="flex items-start space-x-3">
-                        <div className="p-2 bg-red-100 rounded-full"><AlertTriangle className="h-5 w-5 text-red-600" /></div>
-                        <div>
-                            <h3 className="text-lg font-semibold">Delete {itemType}</h3>
-                            <p className="text-sm text-gray-600 mt-1">Are you sure you want to delete "{item.name}"? This action cannot be undone.</p>
-                        </div>
-                    </div>
-                </div>
-                <div className="flex justify-end space-x-2 p-4 bg-gray-50 rounded-b-xl">
-                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-200 rounded-lg">Cancel</button>
-                    <button type="button" onClick={onConfirm} className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg">Delete</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-// --- Main Page Component ---
+import DepartmentModal from '../components/DataManager/DepartmentModal';
+import RoomModal from '../components/DataManager/RoomModal';
+import DeleteConfirmModal from '../components/DataManager/DeleteConfirmModal';
 
 const DataManagerPage: React.FC = () => {
   const { departments, rooms, deleteDepartment, deleteRoom } = useData();
   const [activeTab, setActiveTab] = useState<'departments' | 'rooms'>('departments');
-  const [showAddDeptModal, setShowAddDeptModal] = useState(false);
-  const [showAddRoomModal, setShowAddRoomModal] = useState(false);
+  const [showModal, setShowModal] = useState<null | 'add-dept' | 'edit-dept' | 'add-room' | 'edit-room'>(null);
+  const [currentItem, setCurrentItem] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [itemToDelete, setItemToDelete] = useState<{ item: any; type: string } | null>(null);
-  const [itemToEdit, setItemToEdit] = useState<{ item: any; type: string } | null>(null);
 
   const handleDeleteConfirm = () => {
     if (itemToDelete) {
@@ -120,7 +37,7 @@ const DataManagerPage: React.FC = () => {
               <div><p className="font-semibold text-gray-900">{dept.name}</p><p className="text-sm text-gray-500">{dept.batches.length} Batches • {dept.faculty.length} Faculty</p></div>
             </Link>
             <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button onClick={() => setItemToEdit({ item: dept, type: 'departments' })} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => { setCurrentItem(dept); setShowModal('edit-dept'); }} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
                 <button onClick={() => setItemToDelete({ item: dept, type: 'Department' })} className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
             </div>
         </div>
@@ -134,7 +51,7 @@ const DataManagerPage: React.FC = () => {
             <div key={room.id} className="flex items-center justify-between p-4 group">
                 <div className="flex items-center space-x-4"><div className="p-3 bg-emerald-100 rounded-lg"><MapPin className="h-6 w-6 text-emerald-600" /></div><div><p className="font-semibold text-gray-900">{room.name}</p><p className="text-sm text-gray-500">{room.type} • Capacity: {room.capacity} • {room.building}</p></div></div>
                 <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setItemToEdit({ item: room, type: 'rooms' })} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => { setCurrentItem(room); setShowModal('edit-room'); }} className="p-2 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
                     <button onClick={() => setItemToDelete({ item: room, type: 'Room' })} className="p-2 text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                 </div>
             </div>
@@ -147,7 +64,7 @@ const DataManagerPage: React.FC = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div><h1 className="text-3xl font-bold text-gray-900">Data Manager</h1><p className="text-gray-600 mt-1">Manage all institutional data</p></div>
-        <button onClick={() => activeTab === 'departments' ? setShowAddDeptModal(true) : setShowAddRoomModal(true)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"><Plus className="h-4 w-4 mr-2" /> Add {activeTab === 'departments' ? 'Department' : 'Room'}</button>
+        <button onClick={() => activeTab === 'departments' ? setShowModal('add-dept') : setShowModal('add-room')} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"><Plus className="h-4 w-4 mr-2" /> Add {activeTab === 'departments' ? 'Department' : 'Room'}</button>
       </div>
 
       {/* Tabs */}
@@ -161,9 +78,8 @@ const DataManagerPage: React.FC = () => {
         {activeTab === 'departments' ? renderDepartmentsTab() : renderRoomsTab()}
       </div>
 
-      {showAddDeptModal && <AddDepartmentModal onClose={() => setShowAddDeptModal(false)} />}
-      {showAddRoomModal && <AddRoomModal onClose={() => setShowAddRoomModal(false)} />}
-      {itemToEdit && <EditDataModal isOpen={!!itemToEdit} onClose={() => setItemToEdit(null)} item={itemToEdit.item} type={itemToEdit.type} />}
+      {(showModal === 'add-dept' || showModal === 'edit-dept') && <DepartmentModal mode={showModal === 'add-dept' ? 'add' : 'edit'} department={showModal === 'edit-dept' ? currentItem : null} onClose={() => setShowModal(null)} />}
+      {(showModal === 'add-room' || showModal === 'edit-room') && <RoomModal mode={showModal === 'add-room' ? 'add' : 'edit'} room={showModal === 'edit-room' ? currentItem : null} onClose={() => setShowModal(null)} />}
       {itemToDelete && <DeleteConfirmModal item={itemToDelete.item} itemType={itemToDelete.type} onConfirm={handleDeleteConfirm} onClose={() => setItemToDelete(null)} />}
     </div>
   );
