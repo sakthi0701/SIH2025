@@ -12,16 +12,13 @@ interface DataTableProps {
 }
 
 const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
-  // We need the raw `departments` data to find the parent of a nested item.
   const { departments } = useData();
   
-  // State to manage which modals are open and what data they should display
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [viewItem, setViewItem] = useState<any>(null);
   const [editItem, setEditItem] = useState<any>(null);
   const [deleteItem, setDeleteItem] = useState<any>(null);
 
-  // This function dynamically determines the table columns based on the active tab.
   const getColumns = (type: string) => {
     const columnMap = {
       departments: [
@@ -57,17 +54,12 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
     return columnMap[type as keyof typeof columnMap] || [];
   };
 
-  // **THIS IS THE CRITICAL FIX**
-  // When an edit button is clicked, this function now finds the necessary
-  // parent IDs and attaches them to the item before opening the modal.
   const handleEditClick = (itemToEdit: any) => {
-    // For top-level items (departments, rooms), no special logic is needed.
     if (type === 'departments' || type === 'rooms') {
       setEditItem(itemToEdit);
       return;
     }
 
-    // For nested items, we must find their parent department/regulation IDs.
     let itemWithContext = { ...itemToEdit };
     let parentFound = false;
 
@@ -103,11 +95,9 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
       }
     }
     
-    // Now, open the modal with the complete item object, including parent IDs.
     setEditItem(itemWithContext);
   };
 
-  // Filters the data from the active tab based on the search term
   const filteredData = data.filter((item) =>
     Object.values(item).some((value) =>
       value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
@@ -156,7 +146,6 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
       
       {filteredData.length === 0 && (<div className="text-center py-12"><p className="text-gray-500">No {type} found.</p></div>)}
       
-      {/* --- Modals --- */}
       {viewItem && (<ViewDataModal isOpen={!!viewItem} onClose={() => setViewItem(null)} item={viewItem} type={type}/>)}
       {editItem && (<EditDataModal isOpen={!!editItem} onClose={() => setEditItem(null)} item={editItem} type={type}/>)}
       {deleteItem && (<DeleteConfirmModal isOpen={!!deleteItem} onClose={() => setDeleteItem(null)} item={deleteItem} type={type} onConfirm={() => setDeleteItem(null)}/>)}
@@ -165,4 +154,3 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
 };
 
 export default DataTable;
-
