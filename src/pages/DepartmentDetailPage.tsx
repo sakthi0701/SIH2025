@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData, Course } from '../context/DataContext';
 import { ArrowLeft, Plus, ChevronRight, Edit2, Trash2, AlertTriangle, UserPlus, ChevronDown } from 'lucide-react';
+import EditDataModal from '../components/DataManager/EditDataModal';
 
 // --- Reusable Modals (Can be moved to separate files later) ---
 
@@ -176,6 +177,7 @@ const DepartmentDetailPage: React.FC = () => {
   const [showAddBatchModal, setShowAddBatchModal] = useState(false);
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ item: any; type: string } | null>(null);
+  const [itemToEdit, setItemToEdit] = useState<{ item: any; type: string } | null>(null);
   const [expandedBatch, setExpandedBatch] = useState<string | null>(null);
 
   const department = departments.find(d => d.id === id);
@@ -228,7 +230,7 @@ const DepartmentDetailPage: React.FC = () => {
               <ChevronRight className="h-5 w-5 text-gray-400 group-hover:translate-x-1 transition-transform" />
             </Link>
             <div className="flex space-x-2 pl-4">
-                <button className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => setItemToEdit({item: reg, type: 'regulations'})} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
                 <button onClick={() => setItemToDelete({item: reg, type: 'Regulation'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
             </div>
           </div>
@@ -261,7 +263,7 @@ const DepartmentDetailPage: React.FC = () => {
                     <button onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)} className="p-2 text-gray-500 hover:text-gray-800">
                         <ChevronDown className={`h-5 w-5 transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} />
                     </button>
-                    <button className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                    <button onClick={() => setItemToEdit({item: batch, type: 'batches'})} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
                     <button onClick={() => setItemToDelete({item: batch, type: 'Batch'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
@@ -304,7 +306,7 @@ const DepartmentDetailPage: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-1">Handles: {assignedCourseNames || 'None'}</p>
               </div>
               <div className="flex space-x-2">
-                <button className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                <button onClick={() => setItemToEdit({item: fac, type: 'faculty'})} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
                 <button onClick={() => setItemToDelete({item: fac, type: 'Faculty'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
               </div>
             </div>
@@ -339,6 +341,7 @@ const DepartmentDetailPage: React.FC = () => {
       {showAddRegulationModal && <AddRegulationModal departmentId={department.id} onClose={() => setShowAddRegulationModal(false)} />}
       {showAddBatchModal && <AddBatchModal departmentId={department.id} regulations={department.regulations} onClose={() => setShowAddBatchModal(false)} />}
       {showAddFacultyModal && <AddFacultyModal departmentId={department.id} allCourses={allCourses} onClose={() => setShowAddFacultyModal(false)} />}
+      {itemToEdit && <EditDataModal isOpen={!!itemToEdit} onClose={() => setItemToEdit(null)} item={itemToEdit.item} type={itemToEdit.type} />}
       {itemToDelete && <DeleteConfirmModal item={itemToDelete.item} itemType={itemToDelete.type} onConfirm={handleDeleteConfirm} onClose={() => setItemToDelete(null)} />}
     </div>
   );
