@@ -3,11 +3,10 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import Dashboard from './pages/Dashboard';
-// ---- CHANGE: Import new Department pages ----
 import DepartmentsPage from './pages/DepartmentsPage';
 import DepartmentDetailPage from './pages/DepartmentDetailPage';
-// ---- CHANGE: Remove old DataManager import ----
-// import DataManager from './pages/DataManager'; 
+// ---- CHANGE: Import the new Regulation Detail page ----
+import RegulationDetailPage from './pages/RegulationDetailPage';
 import ConstraintsBuilder from './pages/ConstraintsBuilder';
 import OptimizerRunner from './pages/OptimizerRunner';
 import TimetableViewer from './pages/TimetableViewer';
@@ -38,11 +37,11 @@ function App() {
                 <main className="flex-1 overflow-auto p-6">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
-                    {/* ---- CHANGE: Update routes for Departments ---- */}
                     <Route path="/departments" element={<DepartmentsPage />} />
                     <Route path="/departments/:id" element={<DepartmentDetailPage />} />
-                    {/* <Route path="/data" element={<DataManager />} /> */} {/* <-- Remove this line */}
-                    {/* ------------------------------------------- */}
+                    {/* ---- CHANGE: Add the route for the Regulation Detail page ---- */}
+                    <Route path="/departments/:deptId/regulations/:regId" element={<RegulationDetailPage />} />
+                    {/* ----------------------------------------------------------- */}
                     <Route path="/constraints" element={<ConstraintsBuilder />} />
                     <Route path="/optimizer" element={<OptimizerRunner />} />
                     <Route path="/timetable" element={<TimetableViewer />} />
