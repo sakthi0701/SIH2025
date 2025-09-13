@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useData, Regulation } from '../context/DataContext';
+import { useData, Batch } from '../context/DataContext';
 import { ArrowLeft, Book, Users, UserPlus, Plus, ChevronRight } from 'lucide-react';
 
-// A simple modal for adding a new Regulation (can be moved later)
+// --- MODALS (Can be moved to separate files later) ---
+
 const AddRegulationModal: React.FC<{ departmentId: string; onClose: () => void }> = ({ departmentId, onClose }) => {
   const { addRegulationToDepartment } = useData();
   const [name, setName] = useState('');
@@ -16,7 +17,6 @@ const AddRegulationModal: React.FC<{ departmentId: string; onClose: () => void }
       onClose();
     }
   };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
@@ -40,12 +40,57 @@ const AddRegulationModal: React.FC<{ departmentId: string; onClose: () => void }
   );
 };
 
+const AddBatchModal: React.FC<{ departmentId: string; regulations: any[], onClose: () => void }> = ({ departmentId, regulations, onClose }) => {
+    const { addBatchToDepartment } = useData();
+    const [formData, setFormData] = useState({ name: '', regulationId: '', studentCount: 60 });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (formData.name && formData.regulationId) {
+            addBatchToDepartment(departmentId, formData);
+            onClose();
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4">
+                <div className="p-6 border-b"><h3 className="text-lg font-semibold">Add New Batch</h3></div>
+                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Batch Name (e.g., CSE-2024)</label>
+                        <input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Regulation</label>
+                        <select value={formData.regulationId} onChange={(e) => setFormData({...formData, regulationId: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required>
+                            <option value="">Select a Regulation</option>
+                            {regulations.map(reg => <option key={reg.id} value={reg.id}>{reg.name}</option>)}
+                        </select>
+                    </div>
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Student Count</label>
+                        <input type="number" value={formData.studentCount} onChange={(e) => setFormData({...formData, studentCount: parseInt(e.target.value)})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required />
+                    </div>
+                    <div className="flex justify-end space-x-2 pt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-100 rounded-lg">Cancel</button>
+                        <button type="submit" className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg">Add Batch</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
 
 const DepartmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { departments } = useData();
   const [activeTab, setActiveTab] = useState<'regulations' | 'batches' | 'faculty'>('regulations');
   const [showAddRegulationModal, setShowAddRegulationModal] = useState(false);
+  // ---- CHANGE: State for Add Batch Modal ----
+  const [showAddBatchModal, setShowAddBatchModal] = useState(false);
+  // ------------------------------------------
 
   const department = departments.find(d => d.id === id);
 
@@ -71,7 +116,6 @@ const DepartmentDetailPage: React.FC = () => {
       </div>
       <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
         {department.regulations.map(reg => (
-          // ---- CHANGE: Wrap regulation item in a Link ----
           <Link 
             key={reg.id} 
             to={`/departments/${department.id}/regulations/${reg.id}`}
@@ -83,14 +127,39 @@ const DepartmentDetailPage: React.FC = () => {
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />
           </Link>
-          // --------------------------------------------------
         ))}
          {department.regulations.length === 0 && <p className="p-4 text-gray-500">No regulations found.</p>}
       </div>
     </div>
   );
 
-  const BatchesTab = () => <p className="text-gray-500">Batch management will be here.</p>;
+  // ---- CHANGE: Implement BatchesTab Component ----
+  const BatchesTab = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center">
+        <p>Manage student batches for the department.</p>
+        <button onClick={() => setShowAddBatchModal(true)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+          <Plus className="h-4 w-4 mr-2" /> Add Batch
+        </button>
+      </div>
+      <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
+        {department.batches.map(batch => {
+          const regulation = department.regulations.find(r => r.id === batch.regulationId);
+          return (
+            <div key={batch.id} className="p-4">
+              <p className="font-semibold">{batch.name}</p>
+              <p className="text-sm text-gray-500">
+                {batch.studentCount} Students • Regulation: {regulation?.name || 'N/A'}
+              </p>
+            </div>
+          )
+        })}
+        {department.batches.length === 0 && <p className="p-4 text-gray-500">No batches found.</p>}
+      </div>
+    </div>
+  );
+  // ------------------------------------------
+
   const FacultyTab = () => <p className="text-gray-500">Faculty management will be here.</p>;
 
 
@@ -124,6 +193,9 @@ const DepartmentDetailPage: React.FC = () => {
       </div>
 
       {showAddRegulationModal && <AddRegulationModal departmentId={department.id} onClose={() => setShowAddRegulationModal(false)} />}
+      {/* ---- CHANGE: Render the Add Batch Modal ---- */}
+      {showAddBatchModal && <AddBatchModal departmentId={department.id} regulations={department.regulations} onClose={() => setShowAddBatchModal(false)} />}
+      {/* ------------------------------------------ */}
     </div>
   );
 };
