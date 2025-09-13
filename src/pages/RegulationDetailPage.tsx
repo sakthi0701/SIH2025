@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useData, Course } from '../context/DataContext';
 import { ArrowLeft, Plus, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import EditDataModal from '../components/DataManager/EditDataModal';
 
 // --- Reusable Modals ---
 
@@ -50,6 +51,7 @@ const RegulationDetailPage: React.FC = () => {
   const { departments, deleteCourseFromRegulation } = useData();
   const [modalSemester, setModalSemester] = useState<number | null>(null);
   const [courseToDelete, setCourseToDelete] = useState<Course | null>(null);
+  const [courseToEdit, setCourseToEdit] = useState<Course | null>(null);
 
   const department = departments.find(d => d.id === deptId);
   const regulation = department?.regulations.find(r => r.id === regId);
@@ -82,7 +84,7 @@ const RegulationDetailPage: React.FC = () => {
                  <div key={course.id} className="flex items-center justify-between p-2 rounded-lg group hover:bg-gray-50">
                    <div><p className="font-medium text-sm text-gray-800">{course.name} ({course.code})</p><p className="text-xs text-gray-500">{course.credits} Credits • {course.weeklyHours} hrs/week • {course.type}</p></div>
                    <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-1 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
+                      <button onClick={() => setCourseToEdit(course)} className="p-1 text-gray-400 hover:text-blue-600"><Edit2 className="h-4 w-4" /></button>
                       <button onClick={() => setCourseToDelete(course)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="h-4 w-4" /></button>
                    </div>
                  </div>
@@ -93,6 +95,7 @@ const RegulationDetailPage: React.FC = () => {
       </div>
 
       {modalSemester && (<AddCourseModal departmentId={deptId!} regulationId={regId!} semesterNumber={modalSemester} onClose={() => setModalSemester(null)}/>)}
+      {courseToEdit && <EditDataModal isOpen={!!courseToEdit} onClose={() => setCourseToEdit(null)} item={courseToEdit} type="courses" />}
       {courseToDelete && <DeleteConfirmModal item={courseToDelete} onConfirm={handleDeleteConfirm} onClose={() => setCourseToDelete(null)} />}
     </div>
   )
