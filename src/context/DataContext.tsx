@@ -33,6 +33,11 @@ interface DataContextType {
   updateDepartment: (id: string, updates: Partial<Omit<Department, 'id'>>) => Promise<void>;
   deleteDepartment: (id: string) => Promise<void>;
 
+  // Regulation Functions
+  addRegulationToDepartment: (departmentId: string, regulation: Omit<Regulation, 'id' | 'semesters'>) => Promise<void>;
+  updateRegulationInDepartment: (departmentId: string, regulationId: string, updates: Partial<Omit<Regulation, 'id'>>) => Promise<void>;
+  deleteRegulationFromDepartment: (departmentId: string, regulationId: string) => Promise<void>;
+
   // Course Functions (require full context)
   addCourseToRegulation: (departmentId: string, regulationId: string, semesterNumber: number, course: Omit<Course, 'id'>) => Promise<void>;
   updateCourseInRegulation: (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => Promise<void>;
@@ -155,6 +160,13 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     await updateDepartment(departmentId, { regulations: [...department.regulations, newRegulation] });
   };
   
+  const updateRegulationInDepartment = async (departmentId: string, regulationId: string, updates: Partial<Omit<Regulation, 'id'>>) => {
+    const department = departments.find(d => d.id === departmentId);
+    if (!department) return;
+    const updatedRegulations = department.regulations.map(reg => reg.id === regulationId ? { ...reg, ...updates } : reg);
+    await updateDepartment(departmentId, { regulations: updatedRegulations });
+  };
+
   const updateCourseInRegulation = async (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
@@ -278,4 +290,3 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };
-
