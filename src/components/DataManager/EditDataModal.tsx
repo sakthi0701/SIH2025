@@ -34,8 +34,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
         { key: 'name', label: 'Department Name', type: 'text', required: true },
         { key: 'code', label: 'Department Code', type: 'text', required: true },
         { key: 'head', label: 'Head of Department', type: 'text', required: true },
-        { key: 'facultyCount', label: 'Faculty Count', type: 'number', required: false },
-        { key: 'studentCount', label: 'Student Count', type: 'number', required: false }
       ],
       courses: [
         { key: 'code', label: 'Course Code', type: 'text', required: true },
@@ -43,7 +41,6 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
         { key: 'department', label: 'Department', type: 'text', required: true },
         { key: 'credits', label: 'Credits', type: 'number', required: true },
         { key: 'type', label: 'Type', type: 'select', options: ['Theory', 'Lab', 'Practical'], required: true },
-        { key: 'duration', label: 'Duration (minutes)', type: 'number', required: true },
         { key: 'weeklyHours', label: 'Weekly Hours', type: 'number', required: true }
       ],
       faculty: [
@@ -75,21 +72,22 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
     e.preventDefault();
     
     try {
+      const { id, ...updates } = formData;
       switch (type) {
         case 'departments':
-          updateDepartment(item.id, formData);
+          updateDepartment(id, updates);
           break;
         case 'courses':
-          updateCourse(item.id, formData);
+          updateCourse(id, updates);
           break;
         case 'faculty':
-          updateFaculty(item.id, formData);
+          updateFaculty(id, updates);
           break;
         case 'rooms':
-          updateRoom(item.id, formData);
+          updateRoom(id, updates);
           break;
         case 'batches':
-          updateBatch(item.id, formData);
+          updateBatch(id, updates);
           break;
         default:
           throw new Error(`Unknown type: ${type}`);
@@ -124,7 +122,7 @@ const EditDataModal: React.FC<EditDataModalProps> = ({ isOpen, onClose, item, ty
         <form onSubmit={handleSubmit} className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {fields.map((field) => (
-              <div key={field.key} className={field.key === 'name' || field.key === 'code' ? 'md:col-span-2' : ''}>
+              <div key={field.key}>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {field.label}
                   {field.required && <span className="text-red-500 ml-1">*</span>}
