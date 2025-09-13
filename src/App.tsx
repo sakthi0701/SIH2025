@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/Layout/Sidebar';
 import Header from './components/Layout/Header';
 import Dashboard from './pages/Dashboard';
-import DepartmentsPage from './pages/DepartmentsPage';
+// ---- CHANGE: We will create this new page in the next step ----
+import DataManagerPage from './pages/DataManagerPage'; 
 import DepartmentDetailPage from './pages/DepartmentDetailPage';
-// ---- CHANGE: Import the new Regulation Detail page ----
 import RegulationDetailPage from './pages/RegulationDetailPage';
 import ConstraintsBuilder from './pages/ConstraintsBuilder';
 import OptimizerRunner from './pages/OptimizerRunner';
@@ -37,11 +37,15 @@ function App() {
                 <main className="flex-1 overflow-auto p-6">
                   <Routes>
                     <Route path="/" element={<Dashboard />} />
-                    <Route path="/departments" element={<DepartmentsPage />} />
+                    
+                    {/* ---- CHANGE: Update routes for the new Data Manager ---- */}
+                    <Route path="/data-manager" element={<DataManagerPage />} />
                     <Route path="/departments/:id" element={<DepartmentDetailPage />} />
-                    {/* ---- CHANGE: Add the route for the Regulation Detail page ---- */}
                     <Route path="/departments/:deptId/regulations/:regId" element={<RegulationDetailPage />} />
-                    {/* ----------------------------------------------------------- */}
+                    {/* Redirect old /data route to the new one */}
+                    <Route path="/data" element={<Navigate to="/data-manager" replace />} />
+                    {/* -------------------------------------------------------- */}
+                    
                     <Route path="/constraints" element={<ConstraintsBuilder />} />
                     <Route path="/optimizer" element={<OptimizerRunner />} />
                     <Route path="/timetable" element={<TimetableViewer />} />
