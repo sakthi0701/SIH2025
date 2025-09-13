@@ -20,10 +20,10 @@ export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; d
 // --- CONTEXT TYPE ---
 interface DataContextType {
   departments: Department[];
-  courses: (Course & { departmentId: string; regulationId: string })[];
-  faculty: (Faculty & { departmentId: string })[];
+  courses: (Course & { departmentId: string; regulationId: string; department: string; })[];
+  faculty: (Faculty & { departmentId: string; department: string; })[];
   rooms: Room[];
-  batches: (Batch & { departmentId: string })[];
+  batches: (Batch & { departmentId: string; department: string; })[];
   constraints: Constraint[];
   loading: boolean;
   
@@ -65,10 +65,10 @@ export const useData = () => { const context = useContext(DataContext); if (!con
 
 export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [courses, setCourses] = useState<(Course & { departmentId: string; regulationId: string })[]>([]);
-  const [faculty, setFaculty] = useState<(Faculty & { departmentId: string })[]>([]);
+  const [courses, setCourses] = useState<(Course & { departmentId: string; regulationId: string; department: string; })[]>([]);
+  const [faculty, setFaculty] = useState<(Faculty & { departmentId: string; department: string; })[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [batches, setBatches] = useState<(Batch & { departmentId: string })[]>([]);
+  const [batches, setBatches] = useState<(Batch & { departmentId: string; department: string; })[]>([]);
   const [constraints, setConstraints] = useState<Constraint[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatedTimetable, setGeneratedTimetable] = useState<TimetableSolution | null>(null);
@@ -90,10 +90,10 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Derive flattened lists and add parent IDs for easier lookup
-    const allCourses = departments.flatMap(dept => dept.regulations.flatMap(reg => reg.semesters.flatMap(sem => sem.courses.map(c => ({ ...c, departmentId: dept.id, regulationId: reg.id })))));
-    const allFaculty = departments.flatMap(dept => dept.faculty.map(f => ({ ...f, departmentId: dept.id })));
-    const allBatches = departments.flatMap(dept => dept.batches.map(b => ({ ...b, departmentId: dept.id })));
+    // Derive flattened lists and add parent IDs and names for easier lookup and display
+    const allCourses = departments.flatMap(dept => dept.regulations.flatMap(reg => reg.semesters.flatMap(sem => sem.courses.map(c => ({ ...c, departmentId: dept.id, regulationId: reg.id, department: dept.name })))));
+    const allFaculty = departments.flatMap(dept => dept.faculty.map(f => ({ ...f, departmentId: dept.id, department: dept.name })));
+    const allBatches = departments.flatMap(dept => dept.batches.map(b => ({ ...b, departmentId: dept.id, department: dept.name })));
     setCourses(allCourses);
     setFaculty(allFaculty);
     setBatches(allBatches);
@@ -253,3 +253,4 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };
+
