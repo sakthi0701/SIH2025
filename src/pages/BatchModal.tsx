@@ -67,4 +67,3 @@ const BatchModal: React.FC<BatchModalProps> = ({ mode, batch, departmentId, regu
 };
 
 export default BatchModal;
-
