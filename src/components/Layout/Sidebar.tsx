@@ -12,7 +12,6 @@ import {
   Users,
   Sliders,
   GraduationCap,
-  Building // <-- Import a suitable icon for Departments
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -21,8 +20,8 @@ interface SidebarProps {
 
 const navItems = [
   { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  // ---- CHANGE: "Data Manager" is now "Departments" ----
-  { path: '/departments', icon: Building, label: 'Departments' },
+  // ---- CHANGE: Revert to a single "Data Manager" link ----
+  { path: '/data-manager', icon: Database, label: 'Data Manager' },
   // ----------------------------------------------------
   { path: '/constraints', icon: Sliders, label: 'Constraints' },
   { path: '/optimizer', icon: Play, label: 'Optimizer' },
@@ -56,9 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         <div className="px-3 space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            // ---- CHANGE: Handle active state for nested routes ----
             const isActive = location.pathname.startsWith(item.path) && item.path !== '/' || location.pathname === item.path;
-            // --------------------------------------------------------
             
             return (
               <NavLink
