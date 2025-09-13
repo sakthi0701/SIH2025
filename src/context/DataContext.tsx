@@ -20,10 +20,10 @@ export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; d
 // --- CONTEXT TYPE ---
 interface DataContextType {
   departments: Department[];
-  courses: Course[];
-  faculty: Faculty[];
+  courses: (Course & { departmentId: string; regulationId: string })[];
+  faculty: (Faculty & { departmentId: string })[];
   rooms: Room[];
-  batches: Batch[];
+  batches: (Batch & { departmentId: string })[];
   constraints: Constraint[];
   loading: boolean;
   
@@ -32,33 +32,17 @@ interface DataContextType {
   updateDepartment: (id: string, updates: Partial<Omit<Department, 'id'>>) => Promise<void>;
   deleteDepartment: (id: string) => Promise<void>;
 
-  // Regulation
-  addRegulationToDepartment: (departmentId: string, regulation: Omit<Regulation, 'id' | 'semesters'>) => Promise<void>;
-  updateRegulationInDepartment: (departmentId: string, regulationId: string, updates: Partial<Omit<Regulation, 'id' | 'semesters'>>) => Promise<void>;
-  deleteRegulationFromDepartment: (departmentId: string, regulationId: string) => Promise<void>;
-
-  // Course
-  addCourse: (course: Omit<Course, 'id'>) => Promise<void>;
+  // ... (other function types)
   addCourseToRegulation: (departmentId: string, regulationId: string, semesterNumber: number, course: Omit<Course, 'id'>) => Promise<void>;
-  updateCourse: (id: string, updates: Partial<Course>) => Promise<void>;
   updateCourseInRegulation: (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => Promise<void>;
-  deleteCourse: (id: string) => Promise<void>;
   deleteCourseFromRegulation: (departmentId: string, regulationId: string, courseId: string) => Promise<void>;
 
-  // Batch
-  addBatch: (batch: Omit<Batch, 'id'>) => Promise<void>;
   addBatchToDepartment: (departmentId: string, batch: Omit<Batch, 'id'>) => Promise<void>;
-  updateBatch: (id: string, updates: Partial<Batch>) => Promise<void>;
   updateBatchInDepartment: (departmentId: string, batchId: string, updates: Partial<Omit<Batch, 'id'>>) => Promise<void>;
-  deleteBatch: (id: string) => Promise<void>;
   deleteBatchFromDepartment: (departmentId: string, batchId: string) => Promise<void>;
 
-  // Faculty
-  addFaculty: (faculty: Omit<Faculty, 'id'>) => Promise<void>;
   addFacultyToDepartment: (departmentId: string, faculty: Omit<Faculty, 'id'>) => Promise<void>;
-  updateFaculty: (id: string, updates: Partial<Faculty>) => Promise<void>;
   updateFacultyInDepartment: (departmentId: string, facultyId: string, updates: Partial<Omit<Faculty, 'id'>>) => Promise<void>;
-  deleteFaculty: (id: string) => Promise<void>;
   deleteFacultyFromDepartment: (departmentId: string, facultyId: string) => Promise<void>;
 
   // Room
@@ -81,10 +65,10 @@ export const useData = () => { const context = useContext(DataContext); if (!con
 
 export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [faculty, setFaculty] = useState<Faculty[]>([]);
+  const [courses, setCourses] = useState<(Course & { departmentId: string; regulationId: string })[]>([]);
+  const [faculty, setFaculty] = useState<(Faculty & { departmentId: string })[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
-  const [batches, setBatches] = useState<Batch[]>([]);
+  const [batches, setBatches] = useState<(Batch & { departmentId: string })[]>([]);
   const [constraints, setConstraints] = useState<Constraint[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatedTimetable, setGeneratedTimetable] = useState<TimetableSolution | null>(null);
@@ -106,36 +90,34 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    // Derive courses, faculty, and batches from departments
-    const allCourses = departments.flatMap(dept => dept.regulations.flatMap(reg => reg.semesters.flatMap(sem => sem.courses)));
-    const allFaculty = departments.flatMap(dept => dept.faculty);
-    const allBatches = departments.flatMap(dept => dept.batches);
+    // Derive flattened lists and add parent IDs for easier lookup
+    const allCourses = departments.flatMap(dept => dept.regulations.flatMap(reg => reg.semesters.flatMap(sem => sem.courses.map(c => ({ ...c, departmentId: dept.id, regulationId: reg.id })))));
+    const allFaculty = departments.flatMap(dept => dept.faculty.map(f => ({ ...f, departmentId: dept.id })));
+    const allBatches = departments.flatMap(dept => dept.batches.map(b => ({ ...b, departmentId: dept.id })));
     setCourses(allCourses);
     setFaculty(allFaculty);
     setBatches(allBatches);
   }, [departments]);
 
-  // --- FULL CRUD FUNCTIONS FOR SUPABASE ---
+  // --- FULL CRUD FUNCTIONS ---
 
-  // Departments
   const addDepartment = async (dept: Omit<Department, 'id' | 'regulations' | 'batches' | 'faculty'>) => {
     const newDepartment = { ...dept, regulations: [], batches: [], faculty: [] };
     const { data, error } = await supabase.from('departments').insert([newDepartment]).select();
-    if (error) console.error("Error adding department:", error);
+    if (error) { console.error("Error adding department:", error); throw error; }
     else if (data) setDepartments(prev => [...prev, data[0]]);
   };
   const updateDepartment = async (id: string, updates: Partial<Omit<Department, 'id'>>) => {
      const { data, error } = await supabase.from('departments').update(updates).eq('id', id).select();
-     if (error) console.error("Error updating department:", error);
+     if (error) { console.error("Error updating department:", error); throw error; }
      else if (data) setDepartments(prev => prev.map(d => d.id === id ? data[0] : d));
   };
   const deleteDepartment = async (id: string) => {
     const { error } = await supabase.from('departments').delete().eq('id', id);
-    if (error) console.error("Error deleting department:", error);
+    if (error) { console.error("Error deleting department:", error); throw error; }
     else setDepartments(prev => prev.filter(d => d.id !== id));
   };
 
-  // Regulations
   const addRegulationToDepartment = async (departmentId: string, regulation: Omit<Regulation, 'id' | 'semesters'>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
@@ -154,12 +136,6 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     await updateDepartment(departmentId, { regulations: department.regulations.filter(r => r.id !== regulationId) });
   };
 
-  // Courses
-  const addCourse = async (course: Omit<Course, 'id'>) => {
-    const newCourse = { ...course };
-    // This is a placeholder as courses are nested. You might want a separate 'courses' table.
-    console.warn("addCourse is a placeholder. Courses should be added to a regulation within a department.", newCourse);
-  };
   const addCourseToRegulation = async (departmentId: string, regulationId: string, semesterNumber: number, course: Omit<Course, 'id'>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
@@ -172,10 +148,6 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     });
     await updateDepartment(departmentId, { regulations: updatedRegulations });
   };
-  const updateCourse = async (id: string, updates: Partial<Course>) => {
-    // This is a placeholder. You'll need to find which department and regulation the course belongs to.
-    console.warn("updateCourse is a placeholder. You need to implement the logic to find and update the course within its department/regulation.", id, updates);
-  };
   const updateCourseInRegulation = async (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
@@ -186,10 +158,6 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       return reg;
     });
     await updateDepartment(departmentId, { regulations: updatedRegulations });
-  };
-  const deleteCourse = async (id: string) => {
-    // This is a placeholder.
-    console.warn("deleteCourse is a placeholder.", id);
   };
   const deleteCourseFromRegulation = async (departmentId: string, regulationId: string, courseId: string) => {
     const department = departments.find(d => d.id === departmentId);
@@ -203,18 +171,11 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     await updateDepartment(departmentId, { regulations: updatedRegulations });
   };
   
-  // Batches
-  const addBatch = async (batch: Omit<Batch, 'id'>) => {
-    console.warn("addBatch is a placeholder.", batch);
-  };
   const addBatchToDepartment = async (departmentId: string, batch: Omit<Batch, 'id'>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
     const newBatch: Batch = { ...batch, id: `batch-${Date.now()}` };
     await updateDepartment(departmentId, { batches: [...department.batches, newBatch] });
-  };
-  const updateBatch = async (id: string, updates: Partial<Batch>) => {
-    console.warn("updateBatch is a placeholder.", id, updates);
   };
   const updateBatchInDepartment = async (departmentId: string, batchId: string, updates: Partial<Omit<Batch, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
@@ -222,27 +183,17 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const updatedBatches = department.batches.map(b => b.id === batchId ? { ...b, ...updates } : b);
     await updateDepartment(departmentId, { batches: updatedBatches });
   };
-  const deleteBatch = async (id: string) => {
-    console.warn("deleteBatch is a placeholder.", id);
-  };
   const deleteBatchFromDepartment = async (departmentId: string, batchId: string) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
     await updateDepartment(departmentId, { batches: department.batches.filter(b => b.id !== batchId) });
   };
   
-  // Faculty
-  const addFaculty = async (faculty: Omit<Faculty, 'id'>) => {
-    console.warn("addFaculty is a placeholder.", faculty);
-  };
   const addFacultyToDepartment = async (departmentId: string, faculty: Omit<Faculty, 'id'>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
     const newFaculty: Faculty = { ...faculty, id: `faculty-${Date.now()}` };
     await updateDepartment(departmentId, { faculty: [...department.faculty, newFaculty] });
-  };
-  const updateFaculty = async (id: string, updates: Partial<Faculty>) => {
-    console.warn("updateFaculty is a placeholder.", id, updates);
   };
   const updateFacultyInDepartment = async (departmentId: string, facultyId: string, updates: Partial<Omit<Faculty, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
@@ -250,47 +201,41 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const updatedFaculty = department.faculty.map(f => f.id === facultyId ? { ...f, ...updates } : f);
     await updateDepartment(departmentId, { faculty: updatedFaculty });
   };
-  const deleteFaculty = async (id: string) => {
-    console.warn("deleteFaculty is a placeholder.", id);
-  };
   const deleteFacultyFromDepartment = async (departmentId: string, facultyId: string) => {
       const department = departments.find(d => d.id === departmentId);
       if (!department) return;
       await updateDepartment(departmentId, { faculty: department.faculty.filter(f => f.id !== facultyId) });
   };
   
-  // Rooms
   const addRoom = async (room: Omit<Room, 'id'>) => {
-    const newRoom = { ...room };
-    const { data, error } = await supabase.from('rooms').insert([newRoom]).select();
-    if (error) console.error("Error adding room:", error);
+    const { data, error } = await supabase.from('rooms').insert([room]).select();
+    if (error) { console.error("Error adding room:", error); throw error; }
     else if (data) setRooms(prev => [...prev, data[0]]);
   };
   const updateRoom = async (id: string, updates: Partial<Room>) => {
     const { data, error } = await supabase.from('rooms').update(updates).eq('id', id).select();
-    if (error) console.error("Error updating room:", error);
+    if (error) { console.error("Error updating room:", error); throw error; }
     else if (data) setRooms(prev => prev.map(r => r.id === id ? data[0] : r));
   };
   const deleteRoom = async (id: string) => {
     const { error } = await supabase.from('rooms').delete().eq('id', id);
-    if (error) console.error("Error deleting room:", error);
+    if (error) { console.error("Error deleting room:", error); throw error; }
     else setRooms(prev => prev.filter(r => r.id !== id));
   };
   
-  // Constraints
   const addConstraint = async (constraint: Omit<Constraint, 'id'>) => {
     const { data, error } = await supabase.from('constraints').insert([constraint]).select();
-    if (error) console.error("Error adding constraint:", error);
+    if (error) { console.error("Error adding constraint:", error); throw error; }
     else if (data) setConstraints(prev => [...prev, data[0]]);
   };
   const updateConstraint = async (id: string, updates: Partial<Constraint>) => {
     const { data, error } = await supabase.from('constraints').update(updates).eq('id', id).select();
-    if (error) console.error("Error updating constraint:", error);
+    if (error) { console.error("Error updating constraint:", error); throw error; }
     else if (data) setConstraints(prev => prev.map(c => c.id === id ? data[0] : c));
   };
   const deleteConstraint = async (id: string) => {
     const { error } = await supabase.from('constraints').delete().eq('id', id);
-    if (error) console.error("Error deleting constraint:", error);
+    if (error) { console.error("Error deleting constraint:", error); throw error; }
     else setConstraints(prev => prev.filter(c => c.id !== id));
   };
 
@@ -298,9 +243,9 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     departments, courses, faculty, rooms, batches, constraints, loading,
     addDepartment, updateDepartment, deleteDepartment,
     addRegulationToDepartment, updateRegulationInDepartment, deleteRegulationFromDepartment,
-    addCourse, addCourseToRegulation, updateCourse, updateCourseInRegulation, deleteCourse, deleteCourseFromRegulation,
-    addBatch, addBatchToDepartment, updateBatch, updateBatchInDepartment, deleteBatch, deleteBatchFromDepartment,
-    addFaculty, addFacultyToDepartment, updateFaculty, updateFacultyInDepartment, deleteFaculty, deleteFacultyFromDepartment,
+    addCourseToRegulation, updateCourseInRegulation, deleteCourseFromRegulation,
+    addBatchToDepartment, updateBatchInDepartment, deleteBatchFromDepartment,
+    addFacultyToDepartment, updateFacultyInDepartment, deleteFacultyFromDepartment,
     addRoom, updateRoom, deleteRoom,
     addConstraint, updateConstraint, deleteConstraint,
     generatedTimetable, setGeneratedTimetable
