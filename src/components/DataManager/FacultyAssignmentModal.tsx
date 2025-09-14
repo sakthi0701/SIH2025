@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Save, Users } from 'lucide-react';
-import { useData, Faculty } from '../context/DataContext';
+import { useData, Faculty } from '../../context/DataContext';
 
 interface FacultyAssignmentModalProps {
   isOpen: boolean;
@@ -10,12 +10,12 @@ interface FacultyAssignmentModalProps {
   departmentId: string;
 }
 
-const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({ 
-  isOpen, 
-  onClose, 
-  batchId, 
-  courseId, 
-  departmentId 
+const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
+  isOpen,
+  onClose,
+  batchId,
+  courseId,
+  departmentId
 }) => {
   const { departments, courses, updateBatchCourseAssignments } = useData();
   const [selectedFacultyIds, setSelectedFacultyIds] = useState<string[]>([]);
@@ -24,9 +24,9 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
   const department = departments.find(d => d.id === departmentId);
   const batch = department?.batches.find(b => b.id === batchId);
   const course = courses.find(c => c.id === courseId);
-  const courseHomeDepartment = departments.find(d => 
-    d.regulations.some(r => 
-      r.semesters.some(s => 
+  const courseHomeDepartment = departments.find(d =>
+    d.regulations.some(r =>
+      r.semesters.some(s =>
         s.courses.some(c => c.id === courseId)
       )
     )
@@ -35,20 +35,20 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
   // Get available faculty
   const availableFaculty = React.useMemo(() => {
     let faculty: Faculty[] = [];
-    
+
     if (showAllDepartments) {
       // Show faculty from all departments
       faculty = departments.flatMap(d => d.faculty);
     } else {
       // Show faculty from batch's department
       faculty = department?.faculty || [];
-      
+
       // If course is from different department, automatically include its faculty
       if (courseHomeDepartment && courseHomeDepartment.id !== departmentId) {
         faculty = [...faculty, ...courseHomeDepartment.faculty];
       }
     }
-    
+
     // Filter faculty who can teach this course
     return faculty.filter(f => f.assignedCourses.includes(courseId));
   }, [showAllDepartments, department, courseHomeDepartment, departmentId, courseId, departments]);
@@ -63,8 +63,8 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
   if (!isOpen || !batch || !course) return null;
 
   const handleFacultyToggle = (facultyId: string) => {
-    setSelectedFacultyIds(prev => 
-      prev.includes(facultyId) 
+    setSelectedFacultyIds(prev =>
+      prev.includes(facultyId)
         ? prev.filter(id => id !== facultyId)
         : [...prev, facultyId]
     );
@@ -72,12 +72,12 @@ const FacultyAssignmentModal: React.FC<FacultyAssignmentModalProps> = ({
 
   const handleSave = async () => {
     if (!batch) return;
-    
+
     const updatedAssignments = batch.courseAssignments?.filter(ca => ca.courseId !== courseId) || [];
     if (selectedFacultyIds.length > 0) {
       updatedAssignments.push({ courseId, facultyIds: selectedFacultyIds });
     }
-    
+
     await updateBatchCourseAssignments(departmentId, batchId, updatedAssignments);
     onClose();
   };
