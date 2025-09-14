@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useData, Course, Regulation, Batch, Faculty, calculateCurrentSemester } from '../context/DataContext';
+import { useData, Course, Regulation, Batch, Faculty } from '../context/DataContext';
 import { ArrowLeft, Plus, ChevronRight, Edit2, Trash2, AlertTriangle, UserPlus, ChevronDown } from 'lucide-react';
 import EditDataModal from '../components/DataManager/EditDataModal';
 import FacultyAssignmentModal from '../components/DataManager/FacultyAssignmentModal';
@@ -150,7 +150,7 @@ const DeleteConfirmModal: React.FC<{ item: any; itemType: string; onConfirm: () 
 // --- Main Page Component ---
 const DepartmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { departments, deleteRegulationFromDepartment, deleteBatchFromDepartment, deleteFacultyFromDepartment, faculty } = useData();
+  const { departments, deleteRegulationFromDepartment, deleteBatchFromDepartment, deleteFacultyFromDepartment, faculty, currentSemester } = useData();
   const [activeTab, setActiveTab] = useState<'regulations' | 'batches' | 'faculty'>('regulations');
   const [showAddRegulationModal, setShowAddRegulationModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -163,7 +163,6 @@ const DepartmentDetailPage: React.FC = () => {
   const [facultyAssignmentModalOpen, setFacultyAssignmentModalOpen] = useState(false);
   const [selectedCourseForFacultyAssignment, setSelectedCourseForFacultyAssignment] = useState<Course | null>(null);
   const [selectedBatchForFacultyAssignment, setSelectedBatchForFacultyAssignment] = useState<Batch | null>(null);
-  const [semesterType, setSemesterType] = useState<'Odd' | 'Even'>('Odd');
 
 
   const department = departments.find(d => d.id === id);
@@ -197,7 +196,7 @@ const DepartmentDetailPage: React.FC = () => {
   const BatchesTab = () => (
     <div className="space-y-4">
         <div className="flex justify-between items-center">
-            <p>Manage student batches and view their assigned courses.</p>
+            <p>Manage student batches and view their assigned courses for Semester {currentSemester}.</p>
             <button onClick={() => { setEditingBatch(null); setShowBatchModal(true); }} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
                 <Plus className="h-4 w-4 mr-2" /> Add Batch
             </button>
@@ -205,7 +204,6 @@ const DepartmentDetailPage: React.FC = () => {
         <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
             {department.batches.map(batch => {
                 const regulation = department.regulations.find(r => r.id === batch.regulationId);
-                const currentSemester = calculateCurrentSemester(batch.yearEntered, semesterType);
                 const semester = regulation?.semesters.find(s => s.semesterNumber === currentSemester);
                 const courses = semester?.courses || [];
                 return (
@@ -225,13 +223,7 @@ const DepartmentDetailPage: React.FC = () => {
                         </div>
                         {expandedBatch === batch.id && (
                             <div className="p-4 bg-gray-50 border-t">
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-semibold text-sm">Courses for Semester {currentSemester}:</h4>
-                                    <select value={semesterType} onChange={(e) => setSemesterType(e.target.value as 'Odd' | 'Even')} className="border border-gray-300 rounded-lg px-3 py-1 text-sm">
-                                        <option value="Odd">Odd</option>
-                                        <option value="Even">Even</option>
-                                    </select>
-                                </div>
+                                <h4 className="font-semibold text-sm mb-2">Courses for Semester {currentSemester}:</h4>
                                 {courses.length > 0 ? (
                                     <ul className="text-sm text-gray-700 space-y-2">
                                         {courses.map(c => {
