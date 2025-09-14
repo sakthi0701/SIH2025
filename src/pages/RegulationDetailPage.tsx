@@ -20,7 +20,7 @@ const AddCourseModal: React.FC<{
   };
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl w-full mx-4 sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-xl w-full mx-4 sm:max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="p-6 border-b"><h3 className="text-lg font-semibold">Add New Course to Semester {semesterNumber}</h3></div>
         <form onSubmit={handleSubmit} className="p-6 grid grid-cols-2 gap-4">
           <div className="col-span-2"><label className="block text-sm font-medium text-gray-700 mb-1">Course Name</label><input type="text" value={formData.name} onChange={(e) => setFormData({...formData, name: e.target.value})} className="w-full border border-gray-300 rounded-lg px-3 py-2" required /></div>
@@ -36,7 +36,7 @@ const AddCourseModal: React.FC<{
 };
 
 const DeleteConfirmModal: React.FC<{ item: any; onConfirm: () => void; onClose: () => void; }> = ({ item, onConfirm, onClose }) => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div className="bg-white rounded-xl shadow-xl w-full mx-4 sm:max-w-md max-h-[90vh] overflow-y-auto"><div className="p-6"><div className="flex items-start space-x-3"><div className="p-2 bg-red-100 rounded-full"><AlertTriangle className="h-5 w-5 text-red-600" /></div><div><h3 className="text-lg font-semibold">Delete Course</h3><p className="text-sm text-gray-600 mt-1">Are you sure you want to delete "{item.name}"? This will remove it from the curriculum.</p></div></div></div><div className="flex justify-end space-x-2 p-4 bg-gray-50 rounded-b-xl"><button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-200 rounded-lg">Cancel</button><button type="button" onClick={onConfirm} className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg">Delete</button></div></div></div>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"><div className="bg-white rounded-xl shadow-xl w-full mx-4 sm:max-w-xl max-h-[90vh] overflow-y-auto"><div className="p-6"><div className="flex items-start space-x-3"><div className="p-2 bg-red-100 rounded-full"><AlertTriangle className="h-5 w-5 text-red-600" /></div><div><h3 className="text-lg font-semibold">Delete Course</h3><p className="text-sm text-gray-600 mt-1">Are you sure you want to delete "{item.name}"? This will remove it from the curriculum.</p></div></div></div><div className="flex justify-end space-x-2 p-4 bg-gray-50 rounded-b-xl"><button type="button" onClick={onClose} className="px-4 py-2 text-sm bg-gray-200 rounded-lg">Cancel</button><button type="button" onClick={onConfirm} className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg">Delete</button></div></div></div>
 );
 
 // --- Main Page Component ---
@@ -58,7 +58,7 @@ const RegulationDetailPage: React.FC = () => {
   };
 
   if (!department || !regulation) return <div className="text-center py-12"><h2 className="text-xl font-bold">Regulation not found</h2><Link to={`/departments/${deptId}`} className="text-blue-600 hover:underline mt-4 inline-block">&larr; Back to Department</Link></div>;
-  
+
   return (
      <div className="space-y-6">
       <div className="flex items-center space-x-4"><Link to={`/departments/${deptId}`} className="p-2 rounded-lg hover:bg-gray-100"><ArrowLeft className="h-5 w-5 text-gray-600" /></Link><div><h1 className="text-3xl font-bold text-gray-900">Regulation: {regulation.name} ({regulation.year})</h1><p className="text-gray-600 mt-1">Managing curriculum for {department.name}</p></div></div>
