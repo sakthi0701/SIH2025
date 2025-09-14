@@ -163,6 +163,7 @@ const DepartmentDetailPage: React.FC = () => {
   const [facultyAssignmentModalOpen, setFacultyAssignmentModalOpen] = useState(false);
   const [selectedCourseForFacultyAssignment, setSelectedCourseForFacultyAssignment] = useState<Course | null>(null);
   const [selectedBatchForFacultyAssignment, setSelectedBatchForFacultyAssignment] = useState<Batch | null>(null);
+  const [semesterType, setSemesterType] = useState<'Odd' | 'Even'>('Odd');
 
 
   const department = departments.find(d => d.id === id);
@@ -204,7 +205,7 @@ const DepartmentDetailPage: React.FC = () => {
         <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
             {department.batches.map(batch => {
                 const regulation = department.regulations.find(r => r.id === batch.regulationId);
-                const currentSemester = calculateCurrentSemester(batch.yearEntered);
+                const currentSemester = calculateCurrentSemester(batch.yearEntered, semesterType);
                 const semester = regulation?.semesters.find(s => s.semesterNumber === currentSemester);
                 const courses = semester?.courses || [];
                 return (
@@ -212,7 +213,7 @@ const DepartmentDetailPage: React.FC = () => {
                         <div className="flex items-center justify-between p-4 group">
                             <div>
                                 <p className="font-semibold">{batch.name}</p>
-                                <p className="text-sm text-gray-500">{batch.studentCount} Students • Regulation: {regulation?.name || 'N/A'} • Current Semester: {currentSemester}</p>
+                                <p className="text-sm text-gray-500">{batch.studentCount} Students • Regulation: {regulation?.name || 'N/A'}</p>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <button onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)} className="p-2 text-gray-500 hover:text-gray-800">
@@ -224,7 +225,13 @@ const DepartmentDetailPage: React.FC = () => {
                         </div>
                         {expandedBatch === batch.id && (
                             <div className="p-4 bg-gray-50 border-t">
-                                <h4 className="font-semibold text-sm mb-2">Courses for Semester {currentSemester}:</h4>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h4 className="font-semibold text-sm">Courses for Semester {currentSemester}:</h4>
+                                    <select value={semesterType} onChange={(e) => setSemesterType(e.target.value as 'Odd' | 'Even')} className="border border-gray-300 rounded-lg px-3 py-1 text-sm">
+                                        <option value="Odd">Odd</option>
+                                        <option value="Even">Even</option>
+                                    </select>
+                                </div>
                                 {courses.length > 0 ? (
                                     <ul className="text-sm text-gray-700 space-y-2">
                                         {courses.map(c => {
