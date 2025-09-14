@@ -17,22 +17,6 @@ export interface Room { id: string; name: string; type: 'Classroom' | 'Lab' | 'A
 export interface TimetableSolution { id: number; name: string; timetable: any; score: number; }
 export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; description: string; priority: number; enabled: boolean; category: string; }
 
-// Utility function to calculate current semester
-export const calculateCurrentSemester = (yearEntered: number, semesterType?: 'Odd' | 'Even'): number => {
-    const currentYear = new Date().getFullYear();
-    const academicYear = currentYear - yearEntered;
-
-    if (semesterType) {
-        const baseSemester = academicYear * 2;
-        return semesterType === 'Odd' ? baseSemester + 1 : baseSemester + 2;
-    }
-
-    const currentMonth = new Date().getMonth(); // 0-indexed (0 for January)
-    const isOddSemester = currentMonth >= 6 && currentMonth <= 11; // Approx: July-Dec
-    return Math.max(1, Math.min(8, academicYear * 2 + (isOddSemester ? 1 : 0)));
-};
-
-
 // --- CONTEXT TYPE ---
 interface DataContextType {
   departments: Department[];
@@ -42,6 +26,8 @@ interface DataContextType {
   batches: (Batch & { departmentId: string; department: string; })[];
   constraints: Constraint[];
   loading: boolean;
+  currentSemester: number;
+  setCurrentSemester: (semester: number) => void;
 
   // Department Functions
   addDepartment: (department: Omit<Department, 'id' | 'regulations' | 'batches' | 'faculty'>) => Promise<void>;
@@ -98,6 +84,8 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [constraints, setConstraints] = useState<Constraint[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatedTimetable, setGeneratedTimetable] = useState<TimetableSolution | null>(null);
+  const [currentSemester, setCurrentSemester] = useState<number>(1);
+
 
   useEffect(() => {
     const fetchData = async () => {
@@ -304,6 +292,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
 
   const value = {
     departments, courses, faculty, rooms, batches, constraints, loading,
+    currentSemester, setCurrentSemester,
     addDepartment, updateDepartment, deleteDepartment,
     addRegulationToDepartment, updateRegulationInDepartment, deleteRegulationFromDepartment,
     addCourseToRegulation, updateCourseInRegulation, deleteCourseFromRegulation,
