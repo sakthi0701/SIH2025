@@ -19,11 +19,11 @@ export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; d
 
 // Utility function to calculate current semester
 export const calculateCurrentSemester = (yearEntered: number): number => {
-  const currentYear = 2025; // As per context
-  const currentMonth = 8; // September (0-indexed)
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth(); // 0-indexed (0 for January)
   const academicYear = currentYear - yearEntered;
-  const isOddSemester = currentMonth >= 7 && currentMonth <= 11; // Approx: Aug-Dec
-  return Math.max(1, Math.min(8, academicYear * 2 + (isOddSemester ? 1 : 2)));
+  const isOddSemester = currentMonth >= 6 && currentMonth <= 11; // Approx: July-Dec
+  return Math.max(1, Math.min(8, academicYear * 2 + (isOddSemester ? 1 : 0)));
 };
 
 // --- CONTEXT TYPE ---
@@ -35,7 +35,7 @@ interface DataContextType {
   batches: (Batch & { departmentId: string; department: string; })[];
   constraints: Constraint[];
   loading: boolean;
-  
+
   // Department Functions
   addDepartment: (department: Omit<Department, 'id' | 'regulations' | 'batches' | 'faculty'>) => Promise<void>;
   updateDepartment: (id: string, updates: Partial<Omit<Department, 'id'>>) => Promise<void>;
@@ -45,12 +45,12 @@ interface DataContextType {
   addRegulationToDepartment: (departmentId: string, regulation: Omit<Regulation, 'id' | 'semesters'>) => Promise<void>;
   updateRegulationInDepartment: (departmentId: string, regulationId: string, updates: Partial<Omit<Regulation, 'id'>>) => Promise<void>;
   deleteRegulationFromDepartment: (departmentId: string, regulationId: string) => Promise<void>;
-  
+
   // Course Functions
   addCourseToRegulation: (departmentId: string, regulationId: string, semesterNumber: number, course: Omit<Course, 'id'>) => Promise<void>;
   updateCourseInRegulation: (departmentId: string, regulationId: string, courseId: string, updates: Partial<Omit<Course, 'id'>>) => Promise<void>;
   deleteCourseFromRegulation: (departmentId: string, regulationId: string, courseId: string) => Promise<void>;
-  
+
   // Batch Functions
   addBatchToDepartment: (departmentId: string, batch: Omit<Batch, 'id'>) => Promise<void>;
   updateBatchInDepartment: (departmentId: string, batchId: string, updates: Partial<Omit<Batch, 'id'>>) => Promise<void>;
@@ -70,10 +70,10 @@ interface DataContextType {
   addConstraint: (constraint: Omit<Constraint, 'id'>) => Promise<void>;
   updateConstraint: (id: string, updates: Partial<Constraint>) => Promise<void>;
   deleteConstraint: (id: string) => Promise<void>;
-  
+
   // Batch Course Assignment Functions
   updateBatchCourseAssignments: (departmentId: string, batchId: string, courseAssignments: { courseId: string; facultyIds: string[] }[]) => Promise<void>;
-  
+
   // Timetable State
   generatedTimetable: TimetableSolution | null;
   setGeneratedTimetable: (timetable: TimetableSolution | null) => void;
@@ -98,44 +98,44 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       const { data: departmentsData, error: deptError } = await supabase.from('departments').select('*');
       const { data: roomsData, error: roomError } = await supabase.from('rooms').select('*');
       const { data: constraintsData, error: constraintError } = await supabase.from('constraints').select('*');
-      
+
       if (deptError) console.error('Error fetching departments:', deptError); else setDepartments(departmentsData || []);
       if (roomError) console.error('Error fetching rooms:', roomError); else setRooms(roomsData || []);
       if (constraintError) console.error('Error fetching constraints:', constraintError); else setConstraints(constraintsData || []);
-      
+
       setLoading(false);
     };
     fetchData();
   }, []);
 
   useEffect(() => {
-    const allCourses = departments.flatMap(dept => 
-      dept.regulations.flatMap(reg => 
-        reg.semesters.flatMap(sem => 
-          sem.courses.map(course => ({ 
-            ...course, 
-            departmentId: dept.id, 
+    const allCourses = departments.flatMap(dept =>
+      dept.regulations.flatMap(reg =>
+        reg.semesters.flatMap(sem =>
+          sem.courses.map(course => ({
+            ...course,
+            departmentId: dept.id,
             regulationId: reg.id,
             department: dept.name
           }))
         )
       )
     );
-    const allFaculty = departments.flatMap(dept => 
-      dept.faculty.map(f => ({ 
-        ...f, 
+    const allFaculty = departments.flatMap(dept =>
+      dept.faculty.map(f => ({
+        ...f,
         departmentId: dept.id,
         department: dept.name
       }))
     );
-    const allBatches = departments.flatMap(dept => 
-      dept.batches.map(b => ({ 
-        ...b, 
+    const allBatches = departments.flatMap(dept =>
+      dept.batches.map(b => ({
+        ...b,
         departmentId: dept.id,
         department: dept.name
       }))
     );
-    
+
     setCourses(allCourses);
     setFaculty(allFaculty);
     setBatches(allBatches);
@@ -164,7 +164,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     const newRegulation: Regulation = { ...regulation, id: `reg-${Date.now()}`, semesters: Array.from({ length: 8 }, (_, i) => ({ id: `sem-${Date.now()}-${i}`, semesterNumber: i + 1, courses: [] }))};
     await updateDepartment(departmentId, { regulations: [...department.regulations, newRegulation] });
   };
-  
+
   const updateRegulationInDepartment = async (departmentId: string, regulationId: string, updates: Partial<Omit<Regulation, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
@@ -186,14 +186,14 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     });
     await updateDepartment(departmentId, { regulations: updatedRegulations });
   };
-  
+
   const updateFacultyInDepartment = async (departmentId: string, facultyId: string, updates: Partial<Omit<Faculty, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
     const updatedFaculty = department.faculty.map(f => f.id === facultyId ? { ...f, ...updates } : f);
     await updateDepartment(departmentId, { faculty: updatedFaculty });
   };
-  
+
   const updateBatchInDepartment = async (departmentId: string, batchId: string, updates: Partial<Omit<Batch, 'id'>>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
@@ -232,8 +232,8 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const addBatchToDepartment = async (departmentId: string, batch: Omit<Batch, 'id'>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
-    const newBatch: Batch = { 
-      ...batch, 
+    const newBatch: Batch = {
+      ...batch,
       id: `batch-${Date.now()}`,
       yearEntered: batch.yearEntered || new Date().getFullYear(),
       yearGraduating: batch.yearGraduating || new Date().getFullYear() + 4,
