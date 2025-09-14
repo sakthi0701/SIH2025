@@ -92,7 +92,7 @@ const TimetableViewer: React.FC = () => {
       )}
 
       {/* Timetable Content */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
         {!generatedTimetable ? (
             <div className="text-center p-12 text-gray-500">
                 <h3 className="text-lg font-semibold">No Timetable Generated</h3>

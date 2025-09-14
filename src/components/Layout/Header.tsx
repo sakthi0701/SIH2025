@@ -25,7 +25,7 @@ const Header: React.FC<HeaderProps> = ({ sidebarCollapsed, setSidebarCollapsed }
           <input
             type="text"
             placeholder="Search anything..."
-            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg w-48 sm:w-64 md:w-80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
       </div>

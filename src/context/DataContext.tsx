@@ -10,12 +10,21 @@ export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseAnonKe
 export interface Course { id: string; code: string; name: string; credits: number; weeklyHours: number; type: 'Theory' | 'Lab' | 'Practical'; }
 export interface Semester { id: string; semesterNumber: number; courses: Course[]; }
 export interface Regulation { id: string; name: string; year: number; semesters: Semester[]; }
-export interface Batch { id: string; name: string; regulationId: string; studentCount: number; }
+export interface Batch { id: string; name: string; regulationId: string; studentCount: number; yearEntered: number; yearGraduating: number; courseAssignments?: { courseId: string; facultyIds: string[] }[]; }
 export interface Faculty { id: string; name: string; email: string; maxLoad: number; assignedCourses: string[]; }
 export interface Department { id: string; name: string; code: string; head: string; regulations: Regulation[]; batches: Batch[]; faculty: Faculty[]; }
 export interface Room { id: string; name: string; type: 'Classroom' | 'Lab' | 'Auditorium' | 'Seminar Hall'; capacity: number; building: string; equipment: string[]; }
 export interface TimetableSolution { id: number; name: string; timetable: any; score: number; }
 export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; description: string; priority: number; enabled: boolean; category: string; }
+
+// Utility function to calculate current semester
+export const calculateCurrentSemester = (yearEntered: number): number => {
+  const currentYear = 2025; // As per context
+  const currentMonth = 8; // September (0-indexed)
+  const academicYear = currentYear - yearEntered;
+  const isOddSemester = currentMonth >= 7 && currentMonth <= 11; // Approx: Aug-Dec
+  return Math.max(1, Math.min(8, academicYear * 2 + (isOddSemester ? 1 : 2)));
+};
 
 // --- CONTEXT TYPE ---
 interface DataContextType {
@@ -61,6 +70,9 @@ interface DataContextType {
   addConstraint: (constraint: Omit<Constraint, 'id'>) => Promise<void>;
   updateConstraint: (id: string, updates: Partial<Constraint>) => Promise<void>;
   deleteConstraint: (id: string) => Promise<void>;
+  
+  // Batch Course Assignment Functions
+  updateBatchCourseAssignments: (departmentId: string, batchId: string, courseAssignments: { courseId: string; facultyIds: string[] }[]) => Promise<void>;
   
   // Timetable State
   generatedTimetable: TimetableSolution | null;
@@ -220,7 +232,13 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const addBatchToDepartment = async (departmentId: string, batch: Omit<Batch, 'id'>) => {
     const department = departments.find(d => d.id === departmentId);
     if (!department) return;
-    const newBatch: Batch = { ...batch, id: `batch-${Date.now()}` };
+    const newBatch: Batch = { 
+      ...batch, 
+      id: `batch-${Date.now()}`,
+      yearEntered: batch.yearEntered || new Date().getFullYear(),
+      yearGraduating: batch.yearGraduating || new Date().getFullYear() + 4,
+      courseAssignments: batch.courseAssignments || []
+    };
     await updateDepartment(departmentId, { batches: [...department.batches, newBatch] });
   };
   const deleteBatchFromDepartment = async (departmentId: string, batchId: string) => {
@@ -270,6 +288,13 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     else setConstraints(prev => prev.filter(c => c.id !== id));
   };
 
+  const updateBatchCourseAssignments = async (departmentId: string, batchId: string, courseAssignments: { courseId: string; facultyIds: string[] }[]) => {
+    const department = departments.find(d => d.id === departmentId);
+    if (!department) return;
+    const updatedBatches = department.batches.map(b => b.id === batchId ? { ...b, courseAssignments } : b);
+    await updateDepartment(departmentId, { batches: updatedBatches });
+  };
+
   const value = {
     departments, courses, faculty, rooms, batches, constraints, loading,
     addDepartment, updateDepartment, deleteDepartment,
@@ -279,6 +304,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addFacultyToDepartment, updateFacultyInDepartment, deleteFacultyFromDepartment,
     addRoom, updateRoom, deleteRoom,
     addConstraint, updateConstraint, deleteConstraint,
+    updateBatchCourseAssignments,
     generatedTimetable, setGeneratedTimetable
   };
 
