@@ -18,13 +18,20 @@ export interface TimetableSolution { id: number; name: string; timetable: any; s
 export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; description: string; priority: number; enabled: boolean; category: string; }
 
 // Utility function to calculate current semester
-export const calculateCurrentSemester = (yearEntered: number): number => {
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth(); // 0-indexed (0 for January)
-  const academicYear = currentYear - yearEntered;
-  const isOddSemester = currentMonth >= 6 && currentMonth <= 11; // Approx: July-Dec
-  return Math.max(1, Math.min(8, academicYear * 2 + (isOddSemester ? 1 : 0)));
+export const calculateCurrentSemester = (yearEntered: number, semesterType?: 'Odd' | 'Even'): number => {
+    const currentYear = new Date().getFullYear();
+    const academicYear = currentYear - yearEntered;
+
+    if (semesterType) {
+        const baseSemester = academicYear * 2;
+        return semesterType === 'Odd' ? baseSemester + 1 : baseSemester + 2;
+    }
+
+    const currentMonth = new Date().getMonth(); // 0-indexed (0 for January)
+    const isOddSemester = currentMonth >= 6 && currentMonth <= 11; // Approx: July-Dec
+    return Math.max(1, Math.min(8, academicYear * 2 + (isOddSemester ? 1 : 0)));
 };
+
 
 // --- CONTEXT TYPE ---
 interface DataContextType {
