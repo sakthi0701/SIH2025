@@ -150,7 +150,7 @@ const DeleteConfirmModal: React.FC<{ item: any; itemType: string; onConfirm: () 
 // --- Main Page Component ---
 const DepartmentDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { departments, deleteRegulationFromDepartment, deleteBatchFromDepartment, deleteFacultyFromDepartment } = useData();
+  const { departments, deleteRegulationFromDepartment, deleteBatchFromDepartment, deleteFacultyFromDepartment, faculty } = useData();
   const [activeTab, setActiveTab] = useState<'regulations' | 'batches' | 'faculty'>('regulations');
   const [showAddRegulationModal, setShowAddRegulationModal] = useState(false);
   const [showBatchModal, setShowBatchModal] = useState(false);
@@ -195,12 +195,71 @@ const DepartmentDetailPage: React.FC = () => {
 
   const BatchesTab = () => (
     <div className="space-y-4">
-      <div className="flex justify-between items-center"><p>Manage student batches and view their assigned courses.</p><button onClick={() => { setEditingBatch(null); setShowBatchModal(true); }} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700"><Plus className="h-4 w-4 mr-2" /> Add Batch</button></div>
-      <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">{department.batches.map(batch => { const regulation = department.regulations.find(r => r.id === batch.regulationId); const currentSemester = calculateCurrentSemester(batch.yearEntered); const semester = regulation?.semesters.find(s => s.semesterNumber === currentSemester); const courses = semester?.courses || []; return (<div key={batch.id}><div className="flex items-center justify-between p-4 group"><div><p className="font-semibold">{batch.name}</p><p className="text-sm text-gray-500">{batch.studentCount} Students • Regulation: {regulation?.name || 'N/A'} • Current Semester: {currentSemester}</p></div><div className="flex items-center space-x-2"><button onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)} className="p-2 text-gray-500 hover:text-gray-800"><ChevronDown className={`h-5 w-5 transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} /></button><button onClick={() => { setEditingBatch(batch); setShowBatchModal(true); }} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button><button onClick={() => setItemToDelete({item: batch, type: 'Batch'})} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button></div></div>{expandedBatch === batch.id && (<div className="p-4 bg-gray-50 border-t"><h4 className="font-semibold text-sm mb-2">Courses for Semester {currentSemester}:</h4>{courses.length > 0 ? (<ul className="list-disc pl-5 text-sm text-gray-700 space-y-1">{courses.map(c => <li key={c.id} className="flex justify-between items-center"><span>{c.name} ({c.code})</span><button onClick={() => handleOpenFacultyAssignmentModal(c, batch)} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Assign Faculty</button></li>)}</ul>) : (<p className="text-sm text-gray-500">No courses found for this semester.</p>)}</div>)}</div>)})}
-        {department.batches.length === 0 && <p className="p-4 text-gray-500">No batches found.</p>}
-      </div>
+        <div className="flex justify-between items-center">
+            <p>Manage student batches and view their assigned courses.</p>
+            <button onClick={() => { setEditingBatch(null); setShowBatchModal(true); }} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                <Plus className="h-4 w-4 mr-2" /> Add Batch
+            </button>
+        </div>
+        <div className="border border-gray-200 rounded-lg divide-y divide-gray-200">
+            {department.batches.map(batch => {
+                const regulation = department.regulations.find(r => r.id === batch.regulationId);
+                const currentSemester = calculateCurrentSemester(batch.yearEntered);
+                const semester = regulation?.semesters.find(s => s.semesterNumber === currentSemester);
+                const courses = semester?.courses || [];
+                return (
+                    <div key={batch.id}>
+                        <div className="flex items-center justify-between p-4 group">
+                            <div>
+                                <p className="font-semibold">{batch.name}</p>
+                                <p className="text-sm text-gray-500">{batch.studentCount} Students • Regulation: {regulation?.name || 'N/A'} • Current Semester: {currentSemester}</p>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <button onClick={() => setExpandedBatch(expandedBatch === batch.id ? null : batch.id)} className="p-2 text-gray-500 hover:text-gray-800">
+                                    <ChevronDown className={`h-5 w-5 transition-transform ${expandedBatch === batch.id ? 'rotate-180' : ''}`} />
+                                </button>
+                                <button onClick={() => { setEditingBatch(batch); setShowBatchModal(true); }} className="p-2 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100"><Edit2 className="h-4 w-4" /></button>
+                                <button onClick={() => setItemToDelete({ item: batch, type: 'Batch' })} className="p-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></button>
+                            </div>
+                        </div>
+                        {expandedBatch === batch.id && (
+                            <div className="p-4 bg-gray-50 border-t">
+                                <h4 className="font-semibold text-sm mb-2">Courses for Semester {currentSemester}:</h4>
+                                {courses.length > 0 ? (
+                                    <ul className="text-sm text-gray-700 space-y-2">
+                                        {courses.map(c => {
+                                            const assignment = batch.courseAssignments?.find(a => a.courseId === c.id);
+                                            const assignedFaculty = assignment?.facultyIds.map(id => faculty.find(f => f.id === id)?.name).filter(Boolean);
+                                            return (
+                                                <li key={c.id} className="flex justify-between items-center p-2 bg-white rounded-md">
+                                                    <div>
+                                                        <p className="font-medium">{c.name} ({c.code})</p>
+                                                        {assignedFaculty && assignedFaculty.length > 0 ? (
+                                                            <p className="text-xs text-gray-600">
+                                                                Assigned to: {assignedFaculty.join(', ')}
+                                                            </p>
+                                                        ) : <p className="text-xs text-gray-400">No faculty assigned</p>}
+                                                    </div>
+                                                    <button onClick={() => handleOpenFacultyAssignmentModal(c, batch)} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded hover:bg-blue-200">
+                                                        {assignedFaculty && assignedFaculty.length > 0 ? 'Edit' : 'Assign'} Faculty
+                                                    </button>
+                                                </li>
+                                            )
+                                        })}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-gray-500">No courses found for this semester.</p>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )
+            })}
+            {department.batches.length === 0 && <p className="p-4 text-gray-500">No batches found.</p>}
+        </div>
     </div>
-  );
+);
+
 
   const FacultyTab = () => (
      <div className="space-y-4">
