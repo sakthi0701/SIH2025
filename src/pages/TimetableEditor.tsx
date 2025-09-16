@@ -65,37 +65,50 @@ const TimetableEditor = () => {
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
-
+    if (!over || !active) return;
+  
     const sourceClassData = active.data.current.classData;
-    
-    const sourceDay = sourceClassData.day;
-    const sourceSlot = sourceClassData.slot;
-    const [destDay, destSlot] = over.id.split('-');
-    
+    const sourceId = `${sourceClassData.day}-${sourceClassData.slot}`;
+    const destinationId = over.id;
+  
+    if (sourceId === destinationId) return;
+  
+    const [sourceDay, sourceSlot] = sourceId.split('-');
+    const [destDay, destSlot] = destinationId.split('-');
+  
     const newTimetable = JSON.parse(JSON.stringify(generatedTimetable!.timetable));
-    
-    // Find and remove source class from its original slot
-    const sourceSlotClasses = newTimetable[sourceDay]?.[sourceSlot] || [];
-    const classIndex = sourceSlotClasses.findIndex(c => 
-        c.course.id === sourceClassData.course.id && 
-        c.batch.id === sourceClassData.batch.id &&
-        c.faculty.id === sourceClassData.faculty.id
+  
+    // Find the class to move from the source slot
+    const sourceClasses = newTimetable[sourceDay]?.[sourceSlot] || [];
+    const classToMoveIndex = sourceClasses.findIndex(c => 
+      c.course.id === sourceClassData.course.id &&
+      c.batch.id === sourceClassData.batch.id &&
+      c.faculty.id === sourceClassData.faculty.id
     );
-    
-    if (classIndex === -1) return; // Class not found, should not happen
-
-    const [movedClass] = newTimetable[sourceDay][sourceSlot].splice(classIndex, 1);
-    
-    // Update class's day and slot
-    movedClass.day = destDay;
-    movedClass.slot = destSlot;
-
-    // Add class to destination slot
-    if (!newTimetable[destDay]) newTimetable[destDay] = {};
-    if (!newTimetable[destDay][destSlot]) newTimetable[destDay][destSlot] = [];
-    newTimetable[destDay][destSlot].push(movedClass);
-    
+  
+    if (classToMoveIndex === -1) return; // Should not happen
+  
+    const [classToMove] = sourceClasses.splice(classToMoveIndex, 1);
+  
+    // Update its day and slot
+    classToMove.day = destDay;
+    classToMove.slot = destSlot;
+  
+    // Get destination classes
+    const destClasses = newTimetable[destDay]?.[destSlot] || [];
+  
+    // If there is a class at the destination, move it to the source
+    if (destClasses.length > 0) {
+      const classToSwap = destClasses[0]; // Assuming one class per slot for simplicity
+      classToSwap.day = sourceDay;
+      classToSwap.slot = sourceSlot;
+      newTimetable[sourceDay][sourceSlot].push(classToSwap);
+      newTimetable[destDay][destSlot] = []; // Clear destination before adding the new class
+    }
+  
+    // Add the moved class to the destination
+    newTimetable[destDay][destSlot].push(classToMove);
+  
     setGeneratedTimetable(prev => prev ? ({ ...prev, timetable: newTimetable }) : null);
     setUnsavedChanges(true);
   };
