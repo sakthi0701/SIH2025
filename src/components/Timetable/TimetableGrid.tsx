@@ -6,10 +6,10 @@ interface TimetableGridProps {
 }
 
 const TimetableGrid: React.FC<TimetableGridProps> = ({ scheduledClasses }) => {
-  const timeSlots = [
-    '9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', 
-    '14:00-15:00', '15:00-16:00', '16:00-17:00'
-  ];
+  const settings = JSON.parse(localStorage.getItem('timetable-settings') || '{}');
+  const academicSettings = settings.academic || { periods: [] };
+
+  const timeSlots = useMemo(() => academicSettings.periods.map(p => `${p.start}-${p.end}`), [academicSettings]);
   const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
   const gridData = useMemo(() => {
@@ -27,13 +27,7 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({ scheduledClasses }) => {
         }
     });
     return grid;
-  }, [scheduledClasses]);
-
-  const activeTimeSlots = useMemo(() => {
-      return timeSlots.filter(slot => {
-          return days.some(day => gridData[day][slot].length > 0)
-      })
-  }, [gridData]);
+  }, [scheduledClasses, timeSlots]);
 
   const getClassStyle = (type: string = 'theory') => {
     switch (type.toLowerCase()) {
@@ -47,13 +41,13 @@ const TimetableGrid: React.FC<TimetableGridProps> = ({ scheduledClasses }) => {
     <div className="p-6">
       <div className="overflow-x-auto">
         <div className="min-w-full">
-          <div className="grid grid-cols-6 gap-px bg-gray-200 rounded-lg overflow-hidden">
+          <div className={`grid grid-cols-6 gap-px bg-gray-200 rounded-lg overflow-hidden`}>
             <div className="bg-gray-100 p-4 font-semibold text-gray-900">Time</div>
             {days.map((day) => (
               <div key={day} className="bg-gray-100 p-4 font-semibold text-gray-900 text-center">{day}</div>
             ))}
 
-            {activeTimeSlots.map((timeSlot) => (
+            {timeSlots.map((timeSlot) => (
               <React.Fragment key={timeSlot}>
                 <div className="bg-white p-4 border-r border-gray-200 font-medium text-gray-700 text-sm">{timeSlot}</div>
                 {days.map((day) => (
