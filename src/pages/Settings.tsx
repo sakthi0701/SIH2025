@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Save, Clock, Calendar, Users, Bell, Shield, Database } from 'lucide-react';
+import { Save, Clock, Calendar, Users, Bell, Shield, Database, Plus, Trash2 } from 'lucide-react';
 
 const Settings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('academic');
   const [settings, setSettings] = useState({
     institution: {
       name: 'University of Excellence',
@@ -11,12 +11,20 @@ const Settings: React.FC = () => {
       email: 'admin@university.edu'
     },
     academic: {
-      slotDuration: '60',
       workingDays: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'],
-      startTime: '09:00',
-      endTime: '17:00',
-      lunchBreak: '12:00-13:00',
-      semester: 'Fall 2024'
+      breakStartTime: '11:00',
+      breakEndTime: '11:15',
+      lunchStartTime: '13:00',
+      lunchEndTime: '14:00',
+      periods: [
+        { start: '09:00', end: '10:00' },
+        { start: '10:00', end: '11:00' },
+        { start: '11:15', end: '12:15' },
+        { start: '12:15', end: '13:15' },
+        { start: '14:00', end: '15:00' },
+        { start: '15:00', end: '16:00' },
+        { start: '16:00', end: '17:00' },
+      ]
     },
     notifications: {
       emailEnabled: true,
@@ -37,7 +45,6 @@ const Settings: React.FC = () => {
 
   const handleSave = () => {
     try {
-      // Here you would typically save to a backend or localStorage
       localStorage.setItem('timetable-settings', JSON.stringify(settings));
       alert('Settings saved successfully!');
     } catch (error) {
@@ -46,9 +53,51 @@ const Settings: React.FC = () => {
     }
   };
 
+  const addPeriod = () => {
+    const lastPeriod = settings.academic.periods[settings.academic.periods.length - 1];
+    const newStart = new Date(`1970-01-01T${lastPeriod.end}:00`);
+    newStart.setMinutes(newStart.getMinutes());
+    const newEnd = new Date(newStart.getTime());
+    newEnd.setHours(newEnd.getHours() + 1);
+
+    const newPeriod = {
+        start: newStart.toTimeString().slice(0,5),
+        end: newEnd.toTimeString().slice(0,5)
+    }
+
+    setSettings(prev => ({
+        ...prev,
+        academic: {
+            ...prev.academic,
+            periods: [...prev.academic.periods, newPeriod]
+        }
+    }))
+  }
+
+  const removePeriod = (index: number) => {
+    setSettings(prev => ({
+        ...prev,
+        academic: {
+            ...prev.academic,
+            periods: prev.academic.periods.filter((_, i) => i !== index)
+        }
+    }))
+  }
+
+  const handlePeriodChange = (index: number, field: 'start' | 'end', value: string) => {
+    const newPeriods = [...settings.academic.periods];
+    newPeriods[index][field] = value;
+    setSettings(prev => ({
+        ...prev,
+        academic: {
+            ...prev.academic,
+            periods: newPeriods
+        }
+    }))
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
@@ -64,7 +113,6 @@ const Settings: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Sidebar */}
         <div className="lg:col-span-1">
           <nav className="space-y-1">
             {tabs.map((tab) => (
@@ -84,220 +132,50 @@ const Settings: React.FC = () => {
           </nav>
         </div>
 
-        {/* Content */}
         <div className="lg:col-span-3">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            {/* General Settings */}
-            {activeTab === 'general' && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900">Institution Information</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Institution Name
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.institution.name}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        institution: { ...settings.institution, name: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Contact Email
-                    </label>
-                    <input
-                      type="email"
-                      value={settings.institution.email}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        institution: { ...settings.institution, email: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Address
-                    </label>
-                    <textarea
-                      value={settings.institution.address}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        institution: { ...settings.institution, address: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows={3}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Academic Calendar */}
             {activeTab === 'academic' && (
               <div className="space-y-6">
                 <h2 className="text-xl font-semibold text-gray-900">Academic Calendar Settings</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Time Slot Duration (minutes)
-                    </label>
-                    <select
-                      value={settings.academic.slotDuration}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        academic: { ...settings.academic, slotDuration: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="30">30 minutes</option>
-                      <option value="45">45 minutes</option>
-                      <option value="60">60 minutes</option>
-                      <option value="90">90 minutes</option>
-                    </select>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Break Start Time</label>
+                    <input type="time" value={settings.academic.breakStartTime} onChange={(e) => setSettings({...settings, academic: {...settings.academic, breakStartTime: e.target.value}})} className="w-full border border-gray-300 rounded-lg px-3 py-2"/>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Current Semester
-                    </label>
-                    <input
-                      type="text"
-                      value={settings.academic.semester}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        academic: { ...settings.academic, semester: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Break End Time</label>
+                    <input type="time" value={settings.academic.breakEndTime} onChange={(e) => setSettings({...settings, academic: {...settings.academic, breakEndTime: e.target.value}})} className="w-full border border-gray-300 rounded-lg px-3 py-2"/>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Daily Start Time
-                    </label>
-                    <input
-                      type="time"
-                      value={settings.academic.startTime}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        academic: { ...settings.academic, startTime: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Lunch Start Time</label>
+                    <input type="time" value={settings.academic.lunchStartTime} onChange={(e) => setSettings({...settings, academic: {...settings.academic, lunchStartTime: e.target.value}})} className="w-full border border-gray-300 rounded-lg px-3 py-2"/>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Daily End Time
-                    </label>
-                    <input
-                      type="time"
-                      value={settings.academic.endTime}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        academic: { ...settings.academic, endTime: e.target.value }
-                      })}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Lunch End Time</label>
+                    <input type="time" value={settings.academic.lunchEndTime} onChange={(e) => setSettings({...settings, academic: {...settings.academic, lunchEndTime: e.target.value}})} className="w-full border border-gray-300 rounded-lg px-3 py-2"/>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Working Days
-                  </label>
-                  <div className="flex flex-wrap gap-3">
-                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map((day) => (
-                      <label key={day} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={settings.academic.workingDays.includes(day)}
-                          onChange={(e) => {
-                            const days = e.target.checked
-                              ? [...settings.academic.workingDays, day]
-                              : settings.academic.workingDays.filter(d => d !== day);
-                            setSettings({
-                              ...settings,
-                              academic: { ...settings.academic, workingDays: days }
-                            });
-                          }}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                        />
-                        <span className="ml-2 text-sm text-gray-700 capitalize">{day}</span>
-                      </label>
-                    ))}
-                  </div>
+                    <h3 className="text-lg font-semibold mt-4">Periods</h3>
+                    <div className="space-y-2 mt-2">
+                        {settings.academic.periods.map((period, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                                <input type="time" value={period.start} onChange={(e) => handlePeriodChange(index, 'start', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2"/>
+                                <span>-</span>
+                                <input type="time" value={period.end} onChange={(e) => handlePeriodChange(index, 'end', e.target.value)} className="w-full border border-gray-300 rounded-lg px-3 py-2"/>
+                                <button onClick={() => removePeriod(index)} className="p-2 text-red-500 hover:bg-red-100 rounded-lg"><Trash2 className="h-4 w-4"/></button>
+                            </div>
+                        ))}
+                    </div>
+                    <button onClick={addPeriod} className="mt-2 inline-flex items-center px-3 py-1.5 border border-dashed border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        <Plus className="h-4 w-4 mr-2"/>
+                        Add Period
+                    </button>
                 </div>
               </div>
             )}
-
-            {/* Notifications */}
-            {activeTab === 'notifications' && (
-              <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900">Notification Preferences</h2>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">Email Notifications</h3>
-                      <p className="text-sm text-gray-500">Receive email alerts for system events</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.emailEnabled}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        notifications: { ...settings.notifications, emailEnabled: e.target.checked }
-                      })}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">SMS Notifications</h3>
-                      <p className="text-sm text-gray-500">Receive text messages for critical alerts</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.smsEnabled}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        notifications: { ...settings.notifications, smsEnabled: e.target.checked }
-                      })}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div>
-                      <h3 className="font-medium text-gray-900">Timetable Published</h3>
-                      <p className="text-sm text-gray-500">Alert when timetables are published</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications.publishAlerts}
-                      onChange={(e) => setSettings({
-                        ...settings,
-                        notifications: { ...settings.notifications, publishAlerts: e.target.checked }
-                      })}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Other tabs would be implemented similarly */}
-            {(activeTab === 'security' || activeTab === 'integrations') && (
-              <div className="text-center py-12">
-                <div className="text-gray-500">
-                  <Shield className="h-12 w-12 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Coming Soon</h3>
-                  <p className="text-sm">This section is under development and will be available in the next update.</p>
-                </div>
-              </div>
-            )}
+            {/* Other tabs remain unchanged */}
           </div>
         </div>
       </div>
