@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
-import { 
-  Users, 
-  MapPin, 
-  BookOpen, 
+import {
+  Users,
+  MapPin,
+  BookOpen,
   AlertCircle,
   CheckCircle,
   Building
@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
     const totalStudents = departments.flatMap(d => d.batches).reduce((sum, b) => sum + b.studentCount, 0);
     const totalFaculty = departments.flatMap(d => d.faculty).length;
     const totalCourses = departments.flatMap(d => d.regulations).flatMap(r => r.semesters).flatMap(s => s.courses).length;
-    
+
     return [
       {
         title: 'Total Students',
@@ -61,10 +61,11 @@ const Dashboard: React.FC = () => {
       }
     ];
   }, [departments]);
-  
+
   // Calculate System Health metrics
   const systemHealthData = useMemo(() => {
-    const conflicts = generatedTimetable?.conflicts ?? 0;
+    // --- ✅ FIX IS HERE ---
+    const conflicts = generatedTimetable?.conflicts?.length ?? 0;
     // NOTE: Real utilization and load would require a more complex calculation based on the generated timetable.
     // These are placeholders for demonstration.
     const roomUtilization = generatedTimetable ? '78%' : 'N/A';
