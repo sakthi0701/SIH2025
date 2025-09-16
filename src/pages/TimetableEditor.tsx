@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Save, AlertTriangle, CheckCircle, Search, Move } from 'lucide-react';
+import { Save, AlertTriangle, CheckCircle, Search } from 'lucide-react';
 import { useData } from '../context/DataContext';
-import { DndContext, useDraggable, useDroppable } from '@dnd-kit/core';
+import { DndContext, useDraggable, useDroppable, UniqueIdentifier } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 // Helper component for a single draggable class item
 const DraggableClass = ({ classData, isConflict }) => {
+  const uniqueId = `${classData.course.id}-${classData.batch.id}-${classData.faculty.id}-${classData.day}-${classData.slot}`;
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
-    id: `${classData.day}-${classData.slot}`,
+    id: uniqueId,
     data: { classData },
   });
 
@@ -19,10 +20,10 @@ const DraggableClass = ({ classData, isConflict }) => {
 
   return (
     <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`border-l-4 p-3 rounded-lg h-full text-xs cursor-grab ${conflictStyle}`}>
-      <div className="font-semibold text-gray-900 mb-1">{classData.course.name}</div>
-      <div className="text-gray-700">🧑‍🏫 {classData.faculty.name}</div>
-      <div className="text-gray-700">📍 {classData.room.name}</div>
-      <div className="text-gray-600">🎓 {classData.batch.name}</div>
+      <div className="font-semibold text-gray-900 mb-1 truncate">{classData.course.name}</div>
+      <div className="text-gray-700 truncate">👨‍🏫 {classData.faculty.name}</div>
+      <div className="text-gray-700 truncate">🚪 {classData.room.name}</div>
+      <div className="text-gray-600 truncate">🎓 {classData.batch.name}</div>
     </div>
   );
 };
@@ -35,16 +36,13 @@ const DroppableCell = ({ day, slot, children }) => {
 
 const TimetableEditor = () => {
   const { generatedTimetable, setGeneratedTimetable, departments } = useData();
-  const [selectedCell, setSelectedCell] = useState(null);
+  const [selectedCell, setSelectedCell] = useState<{day: string, slot: string} | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
-  
-  // --- PHASE 1: FILTERING STATE ---
   const [selectedDepartment, setSelectedDepartment] = useState('all');
 
   const timeSlots = useMemo(() => ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', '14:00-15:00', '15:00-16:00', '16:00-17:00'], []);
   const days = useMemo(() => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], []);
 
-  // --- PHASE 3: CONFLICT HIGHLIGHTING ---
   const conflictMap = useMemo(() => {
     const map = new Map();
     if (!generatedTimetable?.conflicts) return map;
@@ -65,41 +63,43 @@ const TimetableEditor = () => {
     };
   }, [selectedCell, generatedTimetable, conflictMap]);
 
-  // --- PHASE 2: DRAG-AND-DROP HANDLER ---
-  const handleDragEnd = (event) => {
+  const handleDragEnd = (event: any) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const sourceId = active.id;
-    const destinationId = over.id;
-    const sourceClass = active.data.current.classData;
+    const sourceClassData = active.data.current.classData;
     
-    const [sourceDay, sourceSlot] = sourceId.split('-');
-    const [destDay, destSlot] = destinationId.split('-');
+    const sourceDay = sourceClassData.day;
+    const sourceSlot = sourceClassData.slot;
+    const [destDay, destSlot] = over.id.split('-');
     
-    const newTimetable = JSON.parse(JSON.stringify(generatedTimetable.timetable));
+    const newTimetable = JSON.parse(JSON.stringify(generatedTimetable!.timetable));
     
-    const destClasses = newTimetable[destDay]?.[destSlot] || [];
-    const destinationClass = destClasses[0] || null;
+    // Find and remove source class from its original slot
+    const sourceSlotClasses = newTimetable[sourceDay]?.[sourceSlot] || [];
+    const classIndex = sourceSlotClasses.findIndex(c => 
+        c.course.id === sourceClassData.course.id && 
+        c.batch.id === sourceClassData.batch.id &&
+        c.faculty.id === sourceClassData.faculty.id
+    );
+    
+    if (classIndex === -1) return; // Class not found, should not happen
 
-    // Remove source class from its original slot
-    newTimetable[sourceDay][sourceSlot] = [];
+    const [movedClass] = newTimetable[sourceDay][sourceSlot].splice(classIndex, 1);
+    
+    // Update class's day and slot
+    movedClass.day = destDay;
+    movedClass.slot = destSlot;
 
-    // Place source class in destination slot, updating its day and slot
-    sourceClass.day = destDay;
-    sourceClass.slot = destSlot;
-    newTimetable[destDay][destSlot] = [sourceClass];
+    // Add class to destination slot
+    if (!newTimetable[destDay]) newTimetable[destDay] = {};
+    if (!newTimetable[destDay][destSlot]) newTimetable[destDay][destSlot] = [];
+    newTimetable[destDay][destSlot].push(movedClass);
     
-    // If destination had a class, move it to the source slot (swap)
-    if (destinationClass) {
-      destinationClass.day = sourceDay;
-      destinationClass.slot = sourceSlot;
-      newTimetable[sourceDay][sourceSlot] = [destinationClass];
-    }
-    
-    setGeneratedTimetable(prev => ({ ...prev, timetable: newTimetable }));
+    setGeneratedTimetable(prev => prev ? ({ ...prev, timetable: newTimetable }) : null);
     setUnsavedChanges(true);
   };
+
 
   if (!generatedTimetable) {
     return (
@@ -123,7 +123,6 @@ const TimetableEditor = () => {
             <p className="text-gray-600 mt-1">Drag and drop to make adjustments.</p>
           </div>
           <div className="flex items-center space-x-4">
-             {/* PHASE 1: Filter UI */}
             <div>
                 <label htmlFor="department" className="block text-sm font-medium text-gray-700">Department</label>
                 <select id="department" value={selectedDepartment} onChange={e => setSelectedDepartment(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md">
@@ -163,21 +162,20 @@ const TimetableEditor = () => {
                             <div className="bg-white p-4 font-medium text-sm">{slot}</div>
                             {days.map(day => {
                                 const classesInSlot = generatedTimetable.timetable[day]?.[slot] || [];
-                                const classData = classesInSlot[0];
                                 const isSelected = selectedCell?.day === day && selectedCell?.slot === slot;
                                 const isConflict = conflictMap.has(`${day}-${slot}`);
                                 
-                                // PHASE 1: Apply filtering
-                                if (classData && selectedDepartment !== 'all' && classData.department.id !== selectedDepartment) {
-                                    return <div key={`${day}-${slot}`} className="bg-white min-h-[100px]"></div>;
-                                }
-                                
-                                const cellStyle = isSelected ? 'border-blue-500 bg-blue-50' : isConflict ? 'border-red-500 bg-red-50' : 'border-transparent hover:bg-gray-50';
+                                const cellStyle = isSelected ? 'ring-2 ring-blue-500 bg-blue-50' : isConflict ? 'bg-red-50' : 'hover:bg-gray-50';
 
                                 return (
-                                <div key={`${day}-${slot}`} onClick={() => setSelectedCell({ day, slot })} className={`p-1 min-h-[100px] border-2 cursor-pointer transition-all ${cellStyle}`}>
+                                <div key={`${day}-${slot}`} onClick={() => setSelectedCell({ day, slot })} className={`p-1 min-h-[120px] bg-white cursor-pointer transition-all ${cellStyle}`}>
                                     <DroppableCell day={day} slot={slot}>
-                                        {classData && <DraggableClass classData={classData} isConflict={isConflict} />}
+                                        {classesInSlot.map((classData, index) => {
+                                             if (selectedDepartment !== 'all' && classData.department.id !== selectedDepartment) {
+                                                return null;
+                                            }
+                                            return <DraggableClass key={index} classData={classData} isConflict={isConflict} />
+                                        })}
                                     </DroppableCell>
                                 </div>
                                 );
