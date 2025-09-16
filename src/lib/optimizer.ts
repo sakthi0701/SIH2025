@@ -8,6 +8,11 @@ export interface OptimizerInput {
   rooms: Room[];
   constraints: Constraint[];
   targetSemester: number;
+  academicSettings: {
+    periods: { start: string, end: string }[];
+    lunchStartTime: string;
+    lunchEndTime: string;
+  }
 }
 
 interface ScheduledClass {
@@ -40,9 +45,6 @@ export interface OptimizationResult {
 
 // --- CONSTANTS AND CONFIGURATION ---
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const TIME_SLOTS = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', '14:00-15:00', '15:00-16:00', '16:00-17:00'];
-const LUNCH_SLOT = '12:00-13:00';
-const SCHEDULABLE_SLOTS = TIME_SLOTS.filter(slot => slot !== LUNCH_SLOT);
 const POPULATION_SIZE = 50;
 const MAX_GENERATIONS = 100;
 const MUTATION_RATE = 0.02;
@@ -82,7 +84,11 @@ export const runOptimization = async (
   updateProgress: (progress: number) => void
 ): Promise<OptimizationResult[]> => {
   input.targetSemester = 3;
-  const { departments, rooms, constraints } = input;
+  const { departments, rooms, constraints, academicSettings } = input;
+  const TIME_SLOTS = academicSettings.periods.map(p => `${p.start}-${p.end}`);
+  const LUNCH_SLOT = `${academicSettings.lunchStartTime}-${academicSettings.lunchEndTime}`;
+  const SCHEDULABLE_SLOTS = TIME_SLOTS.filter(slot => slot !== LUNCH_SLOT);
+  
   updateProgress(5);
   await yieldToEventLoop();
 
@@ -94,7 +100,7 @@ export const runOptimization = async (
       throw new Error("Insufficient data for optimization.");
   }
 
-  let population = initializePopulation(classSessions, allFaculty, rooms, POPULATION_SIZE);
+  let population = initializePopulation(classSessions, allFaculty, rooms, POPULATION_SIZE, SCHEDULABLE_SLOTS);
 
   for (let generation = 0; generation < MAX_GENERATIONS; generation++) {
     const fitnessScores = population.map(individual => calculateFitness(individual, input));
@@ -107,7 +113,7 @@ export const runOptimization = async (
       const parent1 = tournamentSelection(population, fitnessScores);
       const parent2 = tournamentSelection(population, fitnessScores);
       let child = crossover(parent1, parent2);
-      child = mutate(child, allFaculty, rooms);
+      child = mutate(child, allFaculty, rooms, SCHEDULABLE_SLOTS);
       newPopulation.push(child);
     }
     population = newPopulation;
@@ -117,8 +123,8 @@ export const runOptimization = async (
 
   const finalFitnessScores = population.map(individual => calculateFitness(individual, input));
   const bestIndividual = population[finalFitnessScores.indexOf(Math.max(...finalFitnessScores))];
-  const bestTimetable = individualToTimetable(bestIndividual);
-  const bestScore = calculateScore(bestTimetable, enabledSoftConstraints, input);
+  const bestTimetable = individualToTimetable(bestIndividual, TIME_SLOTS);
+  const bestScore = calculateScore(bestTimetable, enabledSoftConstraints, input, SCHEDULABLE_SLOTS);
   const bestConflicts = getHardConflicts(bestIndividual, input); // Using the new detailed function
 
   updateProgress(100);
@@ -134,7 +140,7 @@ export const runOptimization = async (
 
 
 // --- GA OPERATORS ---
-const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Room[], size: number): any[][] => {
+const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Room[], size: number, schedulableSlots: string[]): any[][] => {
   let population = [];
   for (let i = 0; i < size; i++) {
     let individual = [];
@@ -144,7 +150,7 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
         ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)] 
         : null;
       const randomDay = DAYS[Math.floor(Math.random() * DAYS.length)];
-      const randomSlot = SCHEDULABLE_SLOTS[Math.floor(Math.random() * SCHEDULABLE_SLOTS.length)];
+      const randomSlot = schedulableSlots[Math.floor(Math.random() * schedulableSlots.length)];
       const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
       individual.push({ ...session, day: randomDay, slot: randomSlot, faculty: randomFaculty, room: randomRoom });
     }
@@ -155,10 +161,10 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
 
 const calculateFitness = (individual: any[], inputData: OptimizerInput) => {
   let fitness = 100;
-  // **UPDATED**: Use the length of the detailed conflict array for penalty
   fitness -= getHardConflicts(individual, inputData).length * 10;
-  const timetable = individualToTimetable(individual);
-  const score = calculateScore(timetable, [], inputData);
+  const TIME_SLOTS = inputData.academicSettings.periods.map(p => `${p.start}-${p.end}`);
+  const timetable = individualToTimetable(individual, TIME_SLOTS);
+  const score = calculateScore(timetable, [], inputData, TIME_SLOTS);
   fitness += (score - 100);
   return Math.max(0, fitness);
 };
@@ -180,7 +186,7 @@ const crossover = (parent1: any[], parent2: any[]): any[] => {
     return parent1.map((gene, index) => Math.random() < 0.5 ? gene : parent2[index]);
 };
 
-const mutate = (individual: any[], allFaculty: Faculty[], rooms: Room[]): any[] => {
+const mutate = (individual: any[], allFaculty: Faculty[], rooms: Room[], schedulableSlots: string[]): any[] => {
     return individual.map(session => {
         if (Math.random() < MUTATION_RATE) {
             const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
@@ -188,7 +194,7 @@ const mutate = (individual: any[], allFaculty: Faculty[], rooms: Room[]): any[] 
             return {
                 ...session,
                 day: DAYS[Math.floor(Math.random() * DAYS.length)],
-                slot: SCHEDULABLE_SLOTS[Math.floor(Math.random() * SCHEDULABLE_SLOTS.length)],
+                slot: schedulableSlots[Math.floor(Math.random() * schedulableSlots.length)],
                 room: rooms[Math.floor(Math.random() * rooms.length)],
                 faculty: newFaculty,
             };
@@ -199,7 +205,6 @@ const mutate = (individual: any[], allFaculty: Faculty[], rooms: Room[]): any[] 
 
 
 // --- CONFLICT & SCORING LOGIC ---
-// **RENAMED & REWRITTEN**: from countHardConflicts to getHardConflicts to return details
 const getHardConflicts = (individual: any[], inputData: OptimizerInput): ConflictDetail[] => {
     const conflicts: ConflictDetail[] = [];
     const slotMap: Map<string, any[]> = new Map();
@@ -257,14 +262,14 @@ const getHardConflicts = (individual: any[], inputData: OptimizerInput): Conflic
     return conflicts;
 }
 
-const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inputData: OptimizerInput): number => {
+const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inputData: OptimizerInput, schedulableSlots: string[]): number => {
     let score = 0;
     const GAP_PENALTY = 5;
     for (const department of inputData.departments) {
         for (const batch of department.batches) {
             for (const day of DAYS) {
-                const classIndices = SCHEDULABLE_SLOTS
-                    .map((slot, index) => timetable[day][slot].some(c => c.batch.id === batch.id) ? index : -1)
+                const classIndices = schedulableSlots
+                    .map((slot, index) => timetable[day]?.[slot]?.some(c => c.batch.id === batch.id) ? index : -1)
                     .filter(index => index !== -1)
                     .sort((a, b) => a - b);
 
@@ -282,10 +287,12 @@ const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inp
     return 100 + score;
 };
 
-const individualToTimetable = (individual: any[]): Timetable => {
-    const timetable: Timetable = Object.fromEntries(DAYS.map(day => [day, Object.fromEntries(TIME_SLOTS.map(slot => [slot, []]))]));
+const individualToTimetable = (individual: any[], timeSlots: string[]): Timetable => {
+    const timetable: Timetable = Object.fromEntries(DAYS.map(day => [day, Object.fromEntries(timeSlots.map(slot => [slot, []]))]));
     for (const assignment of individual) {
         if(assignment.day && assignment.slot) {
+            if(!timetable[assignment.day]) timetable[assignment.day] = {};
+            if(!timetable[assignment.day][assignment.slot]) timetable[assignment.day][assignment.slot] = []
             timetable[assignment.day][assignment.slot].push(assignment);
         }
     }
