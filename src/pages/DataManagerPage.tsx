@@ -94,7 +94,7 @@ const DeleteConfirmModal: React.FC<{ item: any; itemType: string; onConfirm: () 
 
 // --- Main Page Component ---
 const DataManagerPage: React.FC = () => {
-  const { departments, rooms, deleteDepartment, deleteRoom, currentSemester, setCurrentSemester } = useData();
+  const { departments, rooms, deleteDepartment, deleteRoom, settings, updateSettings } = useData();
   const [activeTab, setActiveTab] = useState<'departments' | 'rooms'>('departments');
   const [showModal, setShowModal] = useState<null | 'add-dept' | 'edit-dept' | 'add-room' | 'edit-room'>(null);
   const [currentItem, setCurrentItem] = useState<any>(null);
@@ -146,8 +146,8 @@ const DataManagerPage: React.FC = () => {
                     <label htmlFor="semester-select" className="text-sm font-medium text-gray-700">Active Semester:</label>
                     <select
                         id="semester-select"
-                        value={currentSemester}
-                        onChange={(e) => setCurrentSemester(parseInt(e.target.value))}
+                        value={settings?.activeSemester || 1}
+                        onChange={(e) => updateSettings({ activeSemester: parseInt(e.target.value)})}
                         className="ml-2 border border-gray-300 rounded-lg px-3 py-2 text-sm"
                     >
                         {Array.from({ length: 8 }, (_, i) => i + 1).map(sem => (
