@@ -62,7 +62,7 @@ const OptimizerRunner: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                     Target Semester
                 </label>
-                <select 
+                <select
                     value={targetSemester}
                     onChange={(e) => setTargetSemester(parseInt(e.target.value))}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -74,7 +74,7 @@ const OptimizerRunner: React.FC = () => {
                 </select>
             </div>
         </div>
-        
+
         <div className="flex space-x-4 border-t border-gray-200 pt-6">
           <button
             onClick={handleRunOptimization}
@@ -85,7 +85,7 @@ const OptimizerRunner: React.FC = () => {
             {isRunning ? `Optimizing... (${Math.round(progress)}%)` : 'Run Optimization'}
           </button>
         </div>
-        
+
         {isRunning && (
           <div className="mt-6">
             <div className="flex justify-between items-center mb-2">
@@ -114,7 +114,8 @@ const OptimizerRunner: React.FC = () => {
               </div>
               <div className="bg-red-50 rounded-lg p-6 text-center">
                 <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-red-900">{results[0].conflicts}</div>
+                {/* --- ✅ FIX IS HERE --- */}
+                <div className="text-3xl font-bold text-red-900">{results[0].conflicts.length}</div>
                 <div className="text-sm text-red-700">Hard Conflicts</div>
               </div>
                <div className="bg-blue-50 rounded-lg p-6 text-center">
