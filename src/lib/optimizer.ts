@@ -3,7 +3,6 @@
 // --- UPDATED TYPE DEFINITIONS ---
 import { Department, Course, Faculty, Room, Batch, Constraint } from '../context/DataContext';
 
-// The input now takes the top-level data structures.
 export interface OptimizerInput {
   departments: Department[];
   rooms: Room[];
@@ -11,7 +10,6 @@ export interface OptimizerInput {
   targetSemester: number;
 }
 
-// Represents a single scheduled class in a time slot.
 interface ScheduledClass {
   course: Course;
   faculty: Faculty;
@@ -20,52 +18,47 @@ interface ScheduledClass {
   department: Department;
 }
 
-// The main timetable structure.
 type Timetable = Record<string, Record<string, ScheduledClass[]>>;
 
-// A single generated solution with its score and details.
+// **NEW**: A detailed conflict object for the editor
+export interface ConflictDetail {
+  type: 'FACULTY_DOUBLE_BOOKED' | 'ROOM_DOUBLE_BOOKED' | 'BATCH_DOUBLE_BOOKED' | 'ROOM_CAPACITY' | 'FACULTY_UNASSIGNED' | 'FACULTY_OVERLOADED';
+  day: string;
+  slot: string;
+  message: string;
+  involved: string[]; // e.g., [faculty.id, course1.id, course2.id]
+}
+
+// **UPDATED**: OptimizationResult now uses the detailed conflict type
 export interface OptimizationResult {
   id: number;
   name: string;
   timetable: Timetable;
   score: number;
-  conflicts: number;
+  conflicts: ConflictDetail[]; // Changed from number to ConflictDetail[]
 }
 
-
 // --- CONSTANTS AND CONFIGURATION ---
-
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 const TIME_SLOTS = ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', '14:00-15:00', '15:00-16:00', '16:00-17:00'];
 const LUNCH_SLOT = '12:00-13:00';
-// **IMPROVEMENT**: Create a list of slots available for scheduling, excluding lunch.
 const SCHEDULABLE_SLOTS = TIME_SLOTS.filter(slot => slot !== LUNCH_SLOT);
-
-
-// --- GENETIC ALGORITHM CONFIGURATION ---
 const POPULATION_SIZE = 50;
 const MAX_GENERATIONS = 100;
-const MUTATION_RATE = 0.02; // **IMPROVEMENT**: This is now a per-gene mutation chance.
+const MUTATION_RATE = 0.02;
 const TOURNAMENT_SIZE = 5;
-const ELITISM_COUNT = 2; // **IMPROVEMENT**: Keep the top 2 individuals each generation.
+const ELITISM_COUNT = 2;
 
 
-// --- REWRITTEN HELPER FUNCTIONS ---
-
-/**
- * Creates a list of all class sessions that need to be scheduled for a given semester.
- */
+// --- HELPER FUNCTIONS ---
 const createClassSessions = (departments: Department[], targetSemester: number): { course: Course; batch: Batch, department: Department }[] => {
   const sessions: { course: Course; batch: Batch, department: Department }[] = [];
-
   for (const department of departments) {
     for (const batch of department.batches) {
       const regulation = department.regulations.find(r => r.id === batch.regulationId);
       if (!regulation) continue;
-
       const semester = regulation.semesters.find(s => s.semesterNumber === targetSemester);
       if (!semester) continue;
-
       for (const course of semester.courses) {
         for (let i = 0; i < course.weeklyHours; i++) {
           sessions.push({ course, batch, department });
@@ -76,9 +69,6 @@ const createClassSessions = (departments: Department[], targetSemester: number):
   return sessions;
 };
 
-/**
- * Flattens the faculty list from all departments.
- */
 const getAllFaculty = (departments: Department[]): Faculty[] => {
     return departments.flatMap(dept => dept.faculty);
 }
@@ -86,70 +76,50 @@ const getAllFaculty = (departments: Department[]): Faculty[] => {
 const yieldToEventLoop = () => new Promise(resolve => setTimeout(resolve, 0));
 
 
-// --- UPDATED CORE GENETIC ALGORITHM LOGIC ---
-
+// --- CORE GENETIC ALGORITHM LOGIC ---
 export const runOptimization = async (
   input: OptimizerInput,
   updateProgress: (progress: number) => void
 ): Promise<OptimizationResult[]> => {
-
-  // For now, we'll hardcode the target semester. Later, this can be a user input.
   input.targetSemester = 3;
-
   const { departments, rooms, constraints } = input;
-
   updateProgress(5);
   await yieldToEventLoop();
 
-  // 1. Prepare data for optimization
   const classSessions = createClassSessions(departments, input.targetSemester);
   const allFaculty = getAllFaculty(departments);
-  const enabledHardConstraints = constraints.filter(c => c.type === 'hard' && c.enabled);
   const enabledSoftConstraints = constraints.filter(c => c.type === 'soft' && c.enabled);
 
   if (classSessions.length === 0 || allFaculty.length === 0 || rooms.length === 0) {
-      throw new Error("Insufficient data for optimization. Please add departments, regulations, courses, batches, faculty, and rooms.");
+      throw new Error("Insufficient data for optimization.");
   }
 
-  // 2. Initialize population
   let population = initializePopulation(classSessions, allFaculty, rooms, POPULATION_SIZE);
 
-  // 3. Evolution loop
   for (let generation = 0; generation < MAX_GENERATIONS; generation++) {
-    const fitnessScores = population.map(individual => calculateFitness(individual, enabledHardConstraints, enabledSoftConstraints, input));
-    
+    const fitnessScores = population.map(individual => calculateFitness(individual, input));
     let newPopulation = [];
-
-    // **IMPROVEMENT: Elitism** - carry over the best individuals
     const sortedPopulation = population
         .map((ind, i) => ({ individual: ind, score: fitnessScores[i] }))
         .sort((a, b) => b.score - a.score);
-
-    for (let i = 0; i < ELITISM_COUNT; i++) {
-        newPopulation.push(sortedPopulation[i].individual);
-    }
-    
-    // Fill the rest of the new population with offspring
+    for (let i = 0; i < ELITISM_COUNT; i++) { newPopulation.push(sortedPopulation[i].individual); }
     for (let i = 0; i < POPULATION_SIZE - ELITISM_COUNT; i++) {
       const parent1 = tournamentSelection(population, fitnessScores);
       const parent2 = tournamentSelection(population, fitnessScores);
       let child = crossover(parent1, parent2);
-      child = mutate(child, allFaculty, rooms); // Mutation now happens on every new child
+      child = mutate(child, allFaculty, rooms);
       newPopulation.push(child);
     }
-
     population = newPopulation;
     updateProgress(5 + (generation / MAX_GENERATIONS) * 90);
     await yieldToEventLoop();
   }
 
-  // 4. Get best solution
-  const finalFitnessScores = population.map(individual => calculateFitness(individual, enabledHardConstraints, enabledSoftConstraints, input));
+  const finalFitnessScores = population.map(individual => calculateFitness(individual, input));
   const bestIndividual = population[finalFitnessScores.indexOf(Math.max(...finalFitnessScores))];
-
   const bestTimetable = individualToTimetable(bestIndividual);
   const bestScore = calculateScore(bestTimetable, enabledSoftConstraints, input);
-  const bestConflicts = countHardConflicts(bestIndividual, enabledHardConstraints, input);
+  const bestConflicts = getHardConflicts(bestIndividual, input); // Using the new detailed function
 
   updateProgress(100);
 
@@ -163,44 +133,33 @@ export const runOptimization = async (
 };
 
 
-// --- UPDATED GENETIC ALGORITHM OPERATORS ---
-
+// --- GA OPERATORS ---
 const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Room[], size: number): any[][] => {
   let population = [];
   for (let i = 0; i < size; i++) {
     let individual = [];
     for (const session of sessions) {
       const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
-      
       const randomFaculty = suitableFaculty.length > 0 
         ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)] 
         : null;
-      
       const randomDay = DAYS[Math.floor(Math.random() * DAYS.length)];
       const randomSlot = SCHEDULABLE_SLOTS[Math.floor(Math.random() * SCHEDULABLE_SLOTS.length)];
       const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
-      
-      individual.push({
-        ...session,
-        day: randomDay,
-        slot: randomSlot,
-        faculty: randomFaculty,
-        room: randomRoom,
-      });
+      individual.push({ ...session, day: randomDay, slot: randomSlot, faculty: randomFaculty, room: randomRoom });
     }
     population.push(individual);
   }
   return population;
 };
 
-const calculateFitness = (individual: any[], hardConstraints: any[], softConstraints: any[], inputData: OptimizerInput) => {
+const calculateFitness = (individual: any[], inputData: OptimizerInput) => {
   let fitness = 100;
-  fitness -= countHardConflicts(individual, hardConstraints, inputData) * 10;
-  
+  // **UPDATED**: Use the length of the detailed conflict array for penalty
+  fitness -= getHardConflicts(individual, inputData).length * 10;
   const timetable = individualToTimetable(individual);
-  const score = calculateScore(timetable, softConstraints, inputData);
+  const score = calculateScore(timetable, [], inputData);
   fitness += (score - 100);
-  
   return Math.max(0, fitness);
 };
 
@@ -218,19 +177,14 @@ const tournamentSelection = (population: any[][], fitnessScores: number[]) => {
 };
 
 const crossover = (parent1: any[], parent2: any[]): any[] => {
-    return parent1.map((gene, index) => {
-        return Math.random() < 0.5 ? gene : parent2[index];
-    });
+    return parent1.map((gene, index) => Math.random() < 0.5 ? gene : parent2[index]);
 };
 
 const mutate = (individual: any[], allFaculty: Faculty[], rooms: Room[]): any[] => {
     return individual.map(session => {
         if (Math.random() < MUTATION_RATE) {
             const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
-            const newFaculty = suitableFaculty.length > 0 
-                ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)]
-                : null;
-
+            const newFaculty = suitableFaculty.length > 0 ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)] : null;
             return {
                 ...session,
                 day: DAYS[Math.floor(Math.random() * DAYS.length)],
@@ -244,66 +198,67 @@ const mutate = (individual: any[], allFaculty: Faculty[], rooms: Room[]): any[] 
 };
 
 
-// --- CONFLICT CHECKING & SCORING (ADAPTED) ---
+// --- CONFLICT & SCORING LOGIC ---
+// **RENAMED & REWRITTEN**: from countHardConflicts to getHardConflicts to return details
+const getHardConflicts = (individual: any[], inputData: OptimizerInput): ConflictDetail[] => {
+    const conflicts: ConflictDetail[] = [];
+    const slotMap: Map<string, any[]> = new Map();
 
-const countHardConflicts = (individual: any[], hardConstraints: Constraint[], inputData: OptimizerInput): number => {
-    let conflicts = 0;
-    const timetable = individualToTimetable(individual);
-    
-    // Check for double bookings (faculty, room, batch)
-    for (const day of DAYS) {
-        for (const slot of SCHEDULABLE_SLOTS) {
-            const classesInSlot = timetable[day][slot];
-            if (classesInSlot.length <= 1) continue;
+    for (const session of individual) {
+        if (!session.day || !session.slot) continue;
+        const key = `${session.day}-${session.slot}`;
+        if (!slotMap.has(key)) slotMap.set(key, []);
+        slotMap.get(key)!.push(session);
+    }
 
-            const facultyInSlot = new Set();
-            const roomsInSlot = new Set();
-            const batchesInSlot = new Set();
+    for (const [key, classesInSlot] of slotMap.entries()) {
+        if (classesInSlot.length <= 1) continue;
+        const [day, slot] = key.split('-');
 
-            for (const c of classesInSlot) {
-                // **FIX HERE**: Only check for faculty conflicts if a faculty is assigned.
-                if (c.faculty) { 
-                    if (facultyInSlot.has(c.faculty.id)) conflicts++;
-                    facultyInSlot.add(c.faculty.id);
-                }
+        const facultyInSlot = new Map<string, any[]>();
+        const roomsInSlot = new Map<string, any[]>();
+        const batchesInSlot = new Map<string, any[]>();
 
-                if (roomsInSlot.has(c.room.id)) conflicts++;
-                roomsInSlot.add(c.room.id);
-
-                if (batchesInSlot.has(c.batch.id)) conflicts++;
-                batchesInSlot.add(c.batch.id);
+        for (const c of classesInSlot) {
+            if (c.faculty) {
+                if (!facultyInSlot.has(c.faculty.id)) facultyInSlot.set(c.faculty.id, []);
+                facultyInSlot.get(c.faculty.id)!.push(c);
+            }
+            if (c.room) {
+                if (!roomsInSlot.has(c.room.id)) roomsInSlot.set(c.room.id, []);
+                roomsInSlot.get(c.room.id)!.push(c);
+            }
+            if (c.batch) {
+                if (!batchesInSlot.has(c.batch.id)) batchesInSlot.set(c.batch.id, []);
+                batchesInSlot.get(c.batch.id)!.push(c);
             }
         }
+
+        facultyInSlot.forEach((classes) => {
+            if (classes.length > 1) conflicts.push({ type: 'FACULTY_DOUBLE_BOOKED', day, slot, message: `${classes[0].faculty.name} is booked for ${classes.length} classes.`, involved: classes.map(c => c.course.id) });
+        });
+        roomsInSlot.forEach((classes) => {
+            if (classes.length > 1) conflicts.push({ type: 'ROOM_DOUBLE_BOOKED', day, slot, message: `Room ${classes[0].room.name} is booked for ${classes.length} classes.`, involved: classes.map(c => c.course.id) });
+        });
+        batchesInSlot.forEach((classes) => {
+            if (classes.length > 1) conflicts.push({ type: 'BATCH_DOUBLE_BOOKED', day, slot, message: `Batch ${classes[0].batch.name} has ${classes.length} classes scheduled.`, involved: classes.map(c => c.course.id) });
+        });
     }
     
-    const facultyLoad: Record<string, number> = {};
-    const allFaculty = getAllFaculty(inputData.departments);
-
-    for(const c of individual) {
-        // This check correctly penalizes unassigned faculty
+    for (const c of individual) {
         if (!c.faculty) {
-            conflicts++;
-            continue;
+            conflicts.push({ type: 'FACULTY_UNASSIGNED', day: c.day, slot: c.slot, message: `Course ${c.course.name} has no faculty.`, involved: [c.course.id] });
         }
-
-        facultyLoad[c.faculty.id] = (facultyLoad[c.faculty.id] || 0) + 1;
-
-        // Check room capacity
-        if (c.room.capacity < c.batch.studentCount) conflicts++;
+        if (c.room && c.batch && c.room.capacity < c.batch.studentCount) {
+            conflicts.push({ type: 'ROOM_CAPACITY', day: c.day, slot: c.slot, message: `Room ${c.room.name} (Cap: ${c.room.capacity}) too small for ${c.batch.name} (${c.batch.studentCount}).`, involved: [c.room.id, c.batch.id] });
+        }
     }
-
-    // Check faculty workload
-    for(const fac of allFaculty) {
-        if((facultyLoad[fac.id] || 0) > fac.maxLoad) conflicts++;
-    }
-
+    
     return conflicts;
 }
 
 const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inputData: OptimizerInput): number => {
     let score = 0;
-
-    // Penalize gaps in batch schedules
     const GAP_PENALTY = 5;
     for (const department of inputData.departments) {
         for (const batch of department.batches) {
@@ -324,13 +279,11 @@ const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inp
             }
         }
     }
-    
     return 100 + score;
 };
 
 const individualToTimetable = (individual: any[]): Timetable => {
     const timetable: Timetable = Object.fromEntries(DAYS.map(day => [day, Object.fromEntries(TIME_SLOTS.map(slot => [slot, []]))]));
-    
     for (const assignment of individual) {
         if(assignment.day && assignment.slot) {
             timetable[assignment.day][assignment.slot].push(assignment);
