@@ -9,7 +9,7 @@ const TimetableViewer: React.FC = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
   const [showFilters, setShowFilters] = useState(true);
   const [filters, setFilters] = useState({
-    departmentId: '',
+    departmentId: departments.length > 0 ? departments[0].id : '',
     batchId: '',
   });
 
@@ -89,7 +89,6 @@ const TimetableViewer: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Filter by Department</label>
               <select value={filters.departmentId} onChange={(e) => setFilters({ departmentId: e.target.value, batchId: '' })} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
-                <option value="">All Departments</option>
                 {departments.map(dept => <option key={dept.id} value={dept.id}>{dept.name}</option>)}
               </select>
             </div>
