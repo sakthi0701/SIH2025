@@ -23,11 +23,26 @@ const OptimizerRunner: React.FC = () => {
       return;
     }
 
+    // Load academic settings from localStorage
+    const savedSettings = localStorage.getItem('timetable-settings');
+    const academicSettings = savedSettings ? JSON.parse(savedSettings).academic : {
+        periods: [
+            { start: '09:00', end: '10:00' }, { start: '10:00', end: '11:00' },
+            { start: '11:15', end: '12:15' }, { start: '12:15', end: '13:15' },
+            { start: '14:00', end: '15:00' }, { start: '15:00', end: '16:00' },
+            { start: '16:00', end: '17:00' },
+        ],
+        lunchStartTime: '13:00',
+        lunchEndTime: '14:00'
+    };
+
+
     const optimizerInput: OptimizerInput = {
       departments,
       rooms,
       constraints, // Use the live constraints from the context
       targetSemester: targetSemester,
+      academicSettings, // Pass the new settings here
     };
 
     try {
@@ -114,7 +129,6 @@ const OptimizerRunner: React.FC = () => {
               </div>
               <div className="bg-red-50 rounded-lg p-6 text-center">
                 <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                {/* --- ✅ FIX IS HERE --- */}
                 <div className="text-3xl font-bold text-red-900">{results[0].conflicts.length}</div>
                 <div className="text-sm text-red-700">Hard Conflicts</div>
               </div>
