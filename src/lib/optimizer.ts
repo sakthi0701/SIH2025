@@ -172,10 +172,9 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
     for (const session of sessions) {
       const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
       
-      // **IMPROVEMENT**: Handle cases with no suitable faculty gracefully.
       const randomFaculty = suitableFaculty.length > 0 
         ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)] 
-        : null; // Assign null if no one can teach it; this will be penalized.
+        : null;
       
       const randomDay = DAYS[Math.floor(Math.random() * DAYS.length)];
       const randomSlot = SCHEDULABLE_SLOTS[Math.floor(Math.random() * SCHEDULABLE_SLOTS.length)];
@@ -196,11 +195,11 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
 
 const calculateFitness = (individual: any[], hardConstraints: any[], softConstraints: any[], inputData: OptimizerInput) => {
   let fitness = 100;
-  fitness -= countHardConflicts(individual, hardConstraints, inputData) * 10; // Heavy penalty for conflicts
+  fitness -= countHardConflicts(individual, hardConstraints, inputData) * 10;
   
   const timetable = individualToTimetable(individual);
   const score = calculateScore(timetable, softConstraints, inputData);
-  fitness += (score - 100); // Add or subtract points based on soft constraints
+  fitness += (score - 100);
   
   return Math.max(0, fitness);
 };
@@ -218,14 +217,12 @@ const tournamentSelection = (population: any[][], fitnessScores: number[]) => {
   return best!;
 };
 
-// **IMPROVEMENT**: Using Uniform Crossover for better gene mixing.
 const crossover = (parent1: any[], parent2: any[]): any[] => {
     return parent1.map((gene, index) => {
         return Math.random() < 0.5 ? gene : parent2[index];
     });
 };
 
-// **IMPROVEMENT**: Mutating a small percentage of genes for better exploration.
 const mutate = (individual: any[], allFaculty: Faculty[], rooms: Room[]): any[] => {
     return individual.map(session => {
         if (Math.random() < MUTATION_RATE) {
@@ -264,8 +261,11 @@ const countHardConflicts = (individual: any[], hardConstraints: Constraint[], in
             const batchesInSlot = new Set();
 
             for (const c of classesInSlot) {
-                if (facultyInSlot.has(c.faculty.id)) conflicts++;
-                facultyInSlot.add(c.faculty.id);
+                // **FIX HERE**: Only check for faculty conflicts if a faculty is assigned.
+                if (c.faculty) { 
+                    if (facultyInSlot.has(c.faculty.id)) conflicts++;
+                    facultyInSlot.add(c.faculty.id);
+                }
 
                 if (roomsInSlot.has(c.room.id)) conflicts++;
                 roomsInSlot.add(c.room.id);
@@ -280,7 +280,7 @@ const countHardConflicts = (individual: any[], hardConstraints: Constraint[], in
     const allFaculty = getAllFaculty(inputData.departments);
 
     for(const c of individual) {
-        // **IMPROVEMENT**: Penalize unassigned faculty
+        // This check correctly penalizes unassigned faculty
         if (!c.faculty) {
             conflicts++;
             continue;
@@ -300,9 +300,8 @@ const countHardConflicts = (individual: any[], hardConstraints: Constraint[], in
     return conflicts;
 }
 
-// **IMPROVEMENT**: Real implementation of soft constraint scoring.
 const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inputData: OptimizerInput): number => {
-    let score = 0; // Start with a neutral score
+    let score = 0;
 
     // Penalize gaps in batch schedules
     const GAP_PENALTY = 5;
@@ -326,19 +325,14 @@ const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inp
         }
     }
     
-    // You can add more soft constraint checks here, e.g., faculty preferences
-    // For each satisfied preference, `score += POINTS;`
-
-    // Return a score based on a 100-point scale
     return 100 + score;
 };
 
 const individualToTimetable = (individual: any[]): Timetable => {
-    // Initialize with all time slots, including lunch, for a complete view.
     const timetable: Timetable = Object.fromEntries(DAYS.map(day => [day, Object.fromEntries(TIME_SLOTS.map(slot => [slot, []]))]));
     
     for (const assignment of individual) {
-        if(assignment.day && assignment.slot) { // Ensure assignment is valid
+        if(assignment.day && assignment.slot) {
             timetable[assignment.day][assignment.slot].push(assignment);
         }
     }
