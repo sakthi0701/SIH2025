@@ -16,6 +16,16 @@ export interface Department { id: string; name: string; code: string; head: stri
 export interface Room { id: string; name: string; type: 'Classroom' | 'Lab' | 'Auditorium' | 'Seminar Hall'; capacity: number; building: string; equipment: string[]; }
 export interface TimetableSolution { id: number; name: string; timetable: any; score: number; }
 export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; description: string; priority: number; enabled: boolean; category: string; }
+export interface AcademicSettings {
+    activeSemester: number;
+    workingDays: string[];
+    breakStartTime: string;
+    breakEndTime: string;
+    lunchStartTime: string;
+    lunchEndTime: string;
+    periods: { start: string, end: string }[];
+}
+
 
 // --- CONTEXT TYPE ---
 interface DataContextType {
@@ -25,9 +35,11 @@ interface DataContextType {
   rooms: Room[];
   batches: (Batch & { departmentId: string; department: string; })[];
   constraints: Constraint[];
+  settings: AcademicSettings | null;
   loading: boolean;
-  currentSemester: number;
-  setCurrentSemester: (semester: number) => void;
+  
+  // Settings Functions
+  updateSettings: (updates: Partial<AcademicSettings>) => Promise<void>;
 
   // Department Functions
   addDepartment: (department: Omit<Department, 'id' | 'regulations' | 'batches' | 'faculty'>) => Promise<void>;
@@ -82,10 +94,9 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [batches, setBatches] = useState<(Batch & { departmentId: string; department: string; })[]>([]);
   const [constraints, setConstraints] = useState<Constraint[]>([]);
+  const [settings, setSettings] = useState<AcademicSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [generatedTimetable, setGeneratedTimetable] = useState<TimetableSolution | null>(null);
-  const [currentSemester, setCurrentSemester] = useState<number>(1);
-
 
   useEffect(() => {
     const fetchData = async () => {
@@ -93,15 +104,27 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       const { data: departmentsData, error: deptError } = await supabase.from('departments').select('*');
       const { data: roomsData, error: roomError } = await supabase.from('rooms').select('*');
       const { data: constraintsData, error: constraintError } = await supabase.from('constraints').select('*');
+      const { data: settingsData, error: settingsError } = await supabase.from('settings').select('*').single();
 
       if (deptError) console.error('Error fetching departments:', deptError); else setDepartments(departmentsData || []);
       if (roomError) console.error('Error fetching rooms:', roomError); else setRooms(roomsData || []);
       if (constraintError) console.error('Error fetching constraints:', constraintError); else setConstraints(constraintsData || []);
+      if (settingsError) console.error('Error fetching settings:', settingsError); else setSettings(settingsData || null);
 
       setLoading(false);
     };
     fetchData();
   }, []);
+  
+  const updateSettings = async (updates: Partial<AcademicSettings>) => {
+      if (!settings) return;
+      const { data, error } = await supabase.from('settings').update(updates).eq('id', settings.id).select().single();
+      if (error) {
+          console.error("Error updating settings:", error);
+          throw error;
+      }
+      if(data) setSettings(data);
+  }
 
   useEffect(() => {
     const allCourses = departments.flatMap(dept =>
@@ -291,8 +314,8 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
 
   const value = {
-    departments, courses, faculty, rooms, batches, constraints, loading,
-    currentSemester, setCurrentSemester,
+    departments, courses, faculty, rooms, batches, constraints, loading, settings,
+    updateSettings,
     addDepartment, updateDepartment, deleteDepartment,
     addRegulationToDepartment, updateRegulationInDepartment, deleteRegulationFromDepartment,
     addCourseToRegulation, updateCourseInRegulation, deleteCourseFromRegulation,
