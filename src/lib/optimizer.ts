@@ -174,7 +174,7 @@ const placeClusterInSchedule = (
 };
 
 // Enhanced fitness calculation with clustering awareness
-const calculateEnhancedFitness = (individual: any[], inputData: OptimizerInput): number => {
+export const calculateEnhancedFitness = (individual: any[], inputData: OptimizerInput): number => {
   let fitness = 2000; // Higher base fitness
   
   // 1. Critical hard conflicts (must be zero for viable solution)
@@ -572,7 +572,7 @@ const crossover = (parent1: any[], parent2: any[]): any[] => {
   });
 };
 
-const getHardConflicts = (individual: any[], inputData: OptimizerInput): ConflictDetail[] => {
+export const getHardConflicts = (individual: any[], inputData: OptimizerInput): ConflictDetail[] => {
   // Enhanced version of original with severity levels
   const conflicts: ConflictDetail[] = [];
   const slotMap: Map<string, any[]> = new Map();
@@ -656,6 +656,30 @@ const getHardConflicts = (individual: any[], inputData: OptimizerInput): Conflic
   }
 
   return conflicts;
+};
+
+// Helper function to convert timetable object to individual array
+export const timetableToIndividual = (timetable: any): any[] => {
+  const individual: any[] = [];
+  const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+  
+  for (const day of DAYS) {
+    if (timetable[day]) {
+      for (const slot in timetable[day]) {
+        if (timetable[day][slot] && Array.isArray(timetable[day][slot])) {
+          for (const classSession of timetable[day][slot]) {
+            individual.push({
+              ...classSession,
+              day,
+              slot
+            });
+          }
+        }
+      }
+    }
+  }
+  
+  return individual;
 };
 
 const individualToTimetable = (individual: any[], timeSlots: string[]) => {

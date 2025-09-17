@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { Save, AlertTriangle, CheckCircle, Search } from 'lucide-react';
+import { Save, AlertTriangle, CheckCircle, Search, Trash2, RefreshCw } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { DndContext, useDraggable, useDroppable, UniqueIdentifier } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import { timetableToIndividual, getHardConflicts, calculateEnhancedFitness } from '../lib/optimizer';
 
 // Helper component for a single draggable class item
 const DraggableClass = ({ classData, isConflict }) => {
@@ -37,33 +38,83 @@ const DroppableCell = ({ day, slot, children, isConflict }) => {
 };
 
 const TimetableEditor = () => {
-  const { generatedTimetable, setGeneratedTimetable, departments } = useData();
+  const { generatedTimetable, setGeneratedTimetable, departments, rooms, constraints, settings, updateTimetableSolution, currentSemester } = useData();
   const [selectedCell, setSelectedCell] = useState<{day: string, slot: string} | null>(null);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState(departments.length > 0 ? departments[0].id : '');
+  
+  // Local state for editing
+  const [localTimetable, setLocalTimetable] = useState<any>(null);
+  const [localConflicts, setLocalConflicts] = useState<any[]>([]);
+  const [localScore, setLocalScore] = useState<number>(0);
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   const timeSlots = useMemo(() => ['9:00-10:00', '10:00-11:00', '11:00-12:00', '12:00-13:00', '14:00-15:00', '15:00-16:00', '16:00-17:00'], []);
   const days = useMemo(() => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], []);
 
+  // Initialize local state from generated timetable
+  React.useEffect(() => {
+    if (generatedTimetable?.timetable) {
+      setLocalTimetable(JSON.parse(JSON.stringify(generatedTimetable.timetable)));
+      setLocalConflicts(generatedTimetable.conflicts || []);
+      setLocalScore(generatedTimetable.score || 0);
+      setUnsavedChanges(false);
+    }
+  }, [generatedTimetable]);
+
+  // Recalculate metrics after changes
+  const recalculateMetrics = React.useCallback(async (timetable: any) => {
+    if (!timetable || !settings) return;
+    
+    setIsRecalculating(true);
+    try {
+      const individual = timetableToIndividual(timetable);
+      
+      const academicSettings = {
+        periods: settings.periods,
+        lunchStartTime: settings.lunchStartTime,
+        lunchEndTime: settings.lunchEndTime
+      };
+      
+      const optimizerInput = {
+        departments,
+        rooms,
+        constraints,
+        targetSemester: currentSemester,
+        academicSettings
+      };
+      
+      const conflicts = getHardConflicts(individual, optimizerInput);
+      const score = calculateEnhancedFitness(individual, optimizerInput);
+      
+      setLocalConflicts(conflicts);
+      setLocalScore(score);
+    } catch (error) {
+      console.error('Error recalculating metrics:', error);
+    } finally {
+      setIsRecalculating(false);
+    }
+  }, [departments, rooms, constraints, currentSemester, settings]);
+
   const conflictMap = useMemo(() => {
     const map = new Map();
-    if (!generatedTimetable?.conflicts) return map;
-    for (const conflict of generatedTimetable.conflicts) {
+    if (!localConflicts) return map;
+    for (const conflict of localConflicts) {
       const key = `${conflict.day}-${conflict.slot}`;
       if (!map.has(key)) map.set(key, []);
       map.get(key).push(conflict.message);
     }
     return map;
-  }, [generatedTimetable]);
+  }, [localConflicts]);
 
   const selectedCellDetails = useMemo(() => {
-    if (!selectedCell || !generatedTimetable?.timetable) return null;
-    const classesInSlot = generatedTimetable.timetable[selectedCell.day]?.[selectedCell.slot] || [];
+    if (!selectedCell || !localTimetable) return null;
+    const classesInSlot = localTimetable[selectedCell.day]?.[selectedCell.slot] || [];
     return {
       classes: classesInSlot,
       conflicts: conflictMap.get(`${selectedCell.day}-${selectedCell.slot}`) || [],
     };
-  }, [selectedCell, generatedTimetable, conflictMap]);
+  }, [selectedCell, localTimetable, conflictMap]);
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
@@ -78,7 +129,7 @@ const TimetableEditor = () => {
     const [sourceDay, sourceSlot] = sourceId.split('-');
     const [destDay, destSlot] = destinationId.split('-');
   
-    const newTimetable = JSON.parse(JSON.stringify(generatedTimetable!.timetable));
+    const newTimetable = JSON.parse(JSON.stringify(localTimetable));
   
     const sourceClasses = newTimetable[sourceDay]?.[sourceSlot] || [];
     const classToMoveIndex = sourceClasses.findIndex(c => 
@@ -98,12 +149,47 @@ const TimetableEditor = () => {
     if (!newTimetable[destDay][destSlot]) newTimetable[destDay][destSlot] = [];
     newTimetable[destDay][destSlot].push(classToMove);
   
-    setGeneratedTimetable(prev => prev ? ({ ...prev, timetable: newTimetable }) : null);
+    setLocalTimetable(newTimetable);
     setUnsavedChanges(true);
+    recalculateMetrics(newTimetable);
   };
 
+  const handleSave = async () => {
+    if (!generatedTimetable || !localTimetable) return;
+    
+    try {
+      await updateTimetableSolution(generatedTimetable.id, {
+        timetable: localTimetable,
+        conflicts: localConflicts,
+        score: localScore,
+        quality_metrics: generatedTimetable.quality_metrics
+      });
+      setUnsavedChanges(false);
+    } catch (error) {
+      console.error('Error saving timetable:', error);
+      alert('Error saving timetable. Please try again.');
+    }
+  };
 
-  if (!generatedTimetable) {
+  const handleRemoveClass = (classToRemove: any) => {
+    if (!localTimetable || !selectedCell) return;
+    
+    const newTimetable = JSON.parse(JSON.stringify(localTimetable));
+    const classesInSlot = newTimetable[selectedCell.day]?.[selectedCell.slot] || [];
+    
+    const updatedClasses = classesInSlot.filter((c: any) => 
+      !(c.course.id === classToRemove.course.id && 
+        c.batch.id === classToRemove.batch.id && 
+        c.faculty.id === classToRemove.faculty.id)
+    );
+    
+    newTimetable[selectedCell.day][selectedCell.slot] = updatedClasses;
+    setLocalTimetable(newTimetable);
+    setUnsavedChanges(true);
+    recalculateMetrics(newTimetable);
+  };
+
+  if (!generatedTimetable || !localTimetable) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center">
         <Search className="h-16 w-16 text-gray-400 mb-4" />
@@ -113,7 +199,7 @@ const TimetableEditor = () => {
     );
   }
 
-  const conflicts = generatedTimetable.conflicts;
+  const conflicts = localConflicts;
 
   return (
     <DndContext onDragEnd={handleDragEnd}>
@@ -131,21 +217,46 @@ const TimetableEditor = () => {
                 </select>
             </div>
             {unsavedChanges && <div className="flex items-center space-x-2 text-amber-600"><AlertTriangle className="h-4 w-4" /><span className="text-sm font-medium">Unsaved</span></div>}
-            <button onClick={() => alert("Changes Saved!")} className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"> <Save className="h-4 w-4 mr-2" /> Save </button>
+            <button 
+              onClick={handleSave}
+              disabled={!unsavedChanges}
+              className="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            > 
+              <Save className="h-4 w-4 mr-2" /> 
+              Save Changes
+            </button>
           </div>
         </div>
 
         {conflicts.length > 0 ? (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <h3 className="text-sm font-medium text-red-800 flex items-center">
-              <AlertTriangle className="h-5 w-5 mr-2" /> {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''} detected
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-red-800 flex items-center">
+                <AlertTriangle className="h-5 w-5 mr-2" /> {conflicts.length} conflict{conflicts.length > 1 ? 's' : ''} detected
+              </h3>
+              {isRecalculating && (
+                <div className="flex items-center text-xs text-red-600">
+                  <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                  Recalculating...
+                </div>
+              )}
+            </div>
+            <div className="mt-2 text-xs text-red-700">
+              <p>• Faculty conflicts: Faculty teaching multiple classes at the same time</p>
+              <p>• Room conflicts: Multiple classes scheduled in the same room</p>
+              <p>• Batch conflicts: Students having multiple classes simultaneously</p>
+            </div>
           </div>
         ) : (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-             <h3 className="text-sm font-medium text-green-800 flex items-center">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-green-800 flex items-center">
                 <CheckCircle className="h-5 w-5 mr-2" /> No conflicts detected
-             </h3>
+              </h3>
+              <div className="text-xs text-green-700">
+                Score: {localScore.toFixed(2)}
+              </div>
+            </div>
           </div>
         )}
 
@@ -159,7 +270,7 @@ const TimetableEditor = () => {
                         <React.Fragment key={slot}>
                             <div className="bg-white p-4 font-medium text-sm">{slot}</div>
                             {days.map(day => {
-                                const classesInSlot = generatedTimetable.timetable[day]?.[slot] || [];
+                                const classesInSlot = localTimetable[day]?.[slot] || [];
                                 const isSelected = selectedCell?.day === day && selectedCell?.slot === slot;
                                 const isConflict = conflictMap.has(`${day}-${slot}`);
                                 
@@ -202,11 +313,20 @@ const TimetableEditor = () => {
                         )}
                         {selectedCellDetails.classes.length > 0 ? (
                              selectedCellDetails.classes.map((classData, index) => (
-                                <div key={index} className="space-y-2 text-sm mb-4 border-b pb-2">
+                                <div key={index} className="space-y-2 text-sm mb-4 border-b pb-2 last:border-b-0">
                                     <div><span className="text-gray-600">Course:</span> <span className="font-medium">{classData.course.name}</span></div>
                                     <div><span className="text-gray-600">Faculty:</span> <span className="font-medium">{classData.faculty.name}</span></div>
                                     <div><span className="text-gray-600">Room:</span> <span className="font-medium">{classData.room.name}</span></div>
                                     <div><span className="text-gray-600">Batch:</span> <span className="font-medium">{classData.batch.name}</span></div>
+                                    {selectedCellDetails.conflicts.length > 0 && (
+                                      <button
+                                        onClick={() => handleRemoveClass(classData)}
+                                        className="inline-flex items-center px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                                      >
+                                        <Trash2 className="h-3 w-3 mr-1" />
+                                        Remove from slot
+                                      </button>
+                                    )}
                                 </div>
                              ))
                         ) : (

@@ -87,6 +87,7 @@ interface DataContextType {
   setGeneratedTimetable: (timetable: TimetableSolution | null) => void;
   addTimetable: (timetable: Omit<TimetableSolution, 'id' | 'created_at'>) => Promise<void>;
   deleteTimetable: (id: string) => Promise<void>;
+  updateTimetableSolution: (id: string, updates: { timetable: any; conflicts: any[]; score: number; quality_metrics?: any }) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -349,6 +350,21 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       setTimetables(prev => prev.filter(t => t.id !== id));
   };
 
+  const updateTimetableSolution = async (id: string, updates: { timetable: any; conflicts: any[]; score: number; quality_metrics?: any }) => {
+      const { data, error } = await supabase.from('timetables').update(updates).eq('id', id).select().single();
+      if (error) {
+          console.error("Error updating timetable:", error);
+          throw error;
+      }
+      if (data) {
+          setTimetables(prev => prev.map(t => t.id === id ? data : t));
+          // Also update the generated timetable if it's the same one
+          if (generatedTimetable && generatedTimetable.id === id) {
+              setGeneratedTimetable(data);
+          }
+      }
+  };
+
   const value = {
     departments, courses, faculty, rooms, batches, constraints, loading, settings, timetables,
     updateSettings,
@@ -362,6 +378,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     updateBatchCourseAssignments,
     generatedTimetable, setGeneratedTimetable,
     addTimetable, deleteTimetable,
+    updateTimetableSolution,
     currentSemester,
   };
 
