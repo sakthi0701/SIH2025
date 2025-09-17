@@ -120,6 +120,9 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       if (constraintError) console.error('Error fetching constraints:', constraintError); else setConstraints(constraintsData || []);
       if (settingsError) console.error('Error fetching settings:', settingsError); else setSettings(settingsData || null);
       if (timetableError) console.error('Error fetching timetables:', timetableError); else setTimetables(timetablesData || []);
+       if (settings) {
+      setCurrentSemester(settings.activeSemester);
+    }
 
 
       setLoading(false);
