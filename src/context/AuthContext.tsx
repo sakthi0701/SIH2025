@@ -54,7 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [users, setUsers] = useState<User[]>([
     {
       id: '1',
-      name: 'Dr. Sarah Admin',
+      name: 'Dr. Selvi',
       email: 'sarah.admin@university.edu',
       role: 'Super Admin',
       department: 'Administration',
