@@ -14,7 +14,7 @@ export interface Batch { id: string; name: string; regulationId: string; student
 export interface Faculty { id: string; name: string; email: string; maxLoad: number; assignedCourses: string[]; }
 export interface Department { id: string; name: string; code: string; head: string; regulations: Regulation[]; batches: Batch[]; faculty: Faculty[]; }
 export interface Room { id: string; name: string; type: 'Classroom' | 'Lab' | 'Auditorium' | 'Seminar Hall'; capacity: number; building: string; equipment: string[]; }
-export interface TimetableSolution { id: string; name: string; timetable: any; score: number; conflicts: any[]; created_at: string; }
+export interface TimetableSolution { id: string; name: string; timetable: any; score: number; conflicts: any[]; created_at: string; quality_metrics: any; }
 export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; description: string; priority: number; enabled: boolean; category: string; }
 export interface AcademicSettings {
     id: string;
@@ -120,15 +120,17 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       if (constraintError) console.error('Error fetching constraints:', constraintError); else setConstraints(constraintsData || []);
       if (settingsError) console.error('Error fetching settings:', settingsError); else setSettings(settingsData || null);
       if (timetableError) console.error('Error fetching timetables:', timetableError); else setTimetables(timetablesData || []);
-       if (settings) {
-      setCurrentSemester(settings.activeSemester);
-    }
-
-
+      
       setLoading(false);
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (settings) {
+      setCurrentSemester(settings.activeSemester);
+    }
+  }, [settings]);
 
   const updateSettings = async (updates: Partial<AcademicSettings>) => {
       if (!settings) return;
@@ -359,7 +361,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addConstraint, updateConstraint, deleteConstraint,
     updateBatchCourseAssignments,
     generatedTimetable, setGeneratedTimetable,
-    addTimetable, deleteTimetable, settings,
+    addTimetable, deleteTimetable,
     currentSemester,
   };
 
