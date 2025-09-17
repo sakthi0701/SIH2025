@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { Play, RotateCcw, Settings, Download, AlertCircle, CheckCircle } from 'lucide-react';
+import { Play, RotateCcw, Settings, Download, AlertCircle, CheckCircle, Eye } from 'lucide-react';
 import { runOptimization, OptimizerInput, OptimizationResult } from '../lib/optimizer';
 import { useData } from '../context/DataContext';
+import { useNavigate } from 'react-router-dom';
 
 const OptimizerRunner: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<OptimizationResult[]>([]);
   const [progress, setProgress] = useState(0);
-  const [targetSemester, setTargetSemester] = useState<number>(3); // Default to a common semester
-
-  // Get live data from the context, including the user-defined constraints
+  const [targetSemester, setTargetSemester] = useState<number>(3);
   const { departments, rooms, constraints, setGeneratedTimetable } = useData();
+  const navigate = useNavigate();
 
   const handleRunOptimization = async () => {
     setIsRunning(true);
@@ -23,7 +23,6 @@ const OptimizerRunner: React.FC = () => {
       return;
     }
 
-    // Load academic settings from localStorage
     const savedSettings = localStorage.getItem('timetable-settings');
     const academicSettings = savedSettings ? JSON.parse(savedSettings).academic : {
         periods: [
@@ -36,20 +35,19 @@ const OptimizerRunner: React.FC = () => {
         lunchEndTime: '14:00'
     };
 
-
     const optimizerInput: OptimizerInput = {
       departments,
       rooms,
-      constraints, // Use the live constraints from the context
+      constraints,
       targetSemester: targetSemester,
-      academicSettings, // Pass the new settings here
+      academicSettings,
     };
 
     try {
       const optimizationResults = await runOptimization(optimizerInput, setProgress);
       setResults(optimizationResults);
       if (optimizationResults.length > 0) {
-        // Save the best result to the global state
+        // Automatically load the best result
         setGeneratedTimetable(optimizationResults[0]);
       }
     } catch (error) {
@@ -58,6 +56,12 @@ const OptimizerRunner: React.FC = () => {
     } finally {
       setIsRunning(false);
     }
+  };
+
+  const handleLoadTimetable = (timetableResult: OptimizationResult) => {
+    setGeneratedTimetable(timetableResult);
+    alert(`Timetable "${timetableResult.name}" loaded!`);
+    navigate('/timetable');
   };
 
   return (
@@ -120,24 +124,30 @@ const OptimizerRunner: React.FC = () => {
       {/* Results */}
        {!isRunning && results.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Optimization Complete</h2>
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-green-50 rounded-lg p-6 text-center">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-green-900">{results[0].score.toFixed(2)}</div>
-                <div className="text-sm text-green-700">Overall Score</div>
-              </div>
-              <div className="bg-red-50 rounded-lg p-6 text-center">
-                <AlertCircle className="h-8 w-8 text-red-600 mx-auto mb-2" />
-                <div className="text-3xl font-bold text-red-900">{results[0].conflicts.length}</div>
-                <div className="text-sm text-red-700">Hard Conflicts</div>
-              </div>
-               <div className="bg-blue-50 rounded-lg p-6 text-center">
-                <Download className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                <div className="text-xl font-bold text-blue-900">Timetable Ready</div>
-                <div className="text-sm text-blue-700">Check the results in the viewer.</div>
-              </div>
-            </div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Top 3 Timetable Solutions</h2>
+           <div className="space-y-4">
+             {results.map((result, index) => (
+               <div key={result.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                 <div>
+                   <h3 className="font-semibold text-gray-800">{result.name} {index === 0 && <span className="text-xs bg-green-100 text-green-800 font-medium ml-2 px-2 py-1 rounded-full">Best</span>}</h3>
+                   <div className="flex space-x-4 text-sm mt-2">
+                      <div className="flex items-center text-green-600">
+                        <CheckCircle className="h-4 w-4 mr-1"/>
+                        Score: {result.score.toFixed(2)}
+                      </div>
+                      <div className={`flex items-center ${result.conflicts.length > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                        <AlertCircle className="h-4 w-4 mr-1"/>
+                        Conflicts: {result.conflicts.length}
+                      </div>
+                   </div>
+                 </div>
+                 <button onClick={() => handleLoadTimetable(result)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                   <Eye className="h-4 w-4 mr-2" />
+                   Load Timetable
+                 </button>
+               </div>
+             ))}
+           </div>
         </div>
       )}
     </div>
