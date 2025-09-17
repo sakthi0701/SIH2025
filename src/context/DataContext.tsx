@@ -330,7 +330,8 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   };
 
   const addTimetable = async (timetable: Omit<TimetableSolution, 'id' | 'created_at'>) => {
-    const { data, error } = await supabase.from('timetables').insert([timetable]).select();
+    const { quality_metrics, ...timetableWithoutMetrics } = timetable;
+    const { data, error } = await supabase.from('timetables').insert([timetableWithoutMetrics]).select();
     if (error) {
         console.error("Error adding timetable:", error);
         throw error;
