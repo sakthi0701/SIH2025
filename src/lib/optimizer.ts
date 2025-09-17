@@ -153,16 +153,44 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
   let population = [];
   for (let i = 0; i < size; i++) {
     let individual = [];
+    const sessionsByBatch = new Map<string, any[]>();
+
+    // Group sessions by batch
     for (const session of sessions) {
-      const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
-      const randomFaculty = suitableFaculty.length > 0
-        ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)]
-        : null;
-      const randomDay = DAYS[Math.floor(Math.random() * DAYS.length)];
-      const randomSlot = schedulableSlots[Math.floor(Math.random() * schedulableSlots.length)];
-      const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
-      individual.push({ ...session, day: randomDay, slot: randomSlot, faculty: randomFaculty, room: randomRoom });
+      if (!sessionsByBatch.has(session.batch.id)) {
+        sessionsByBatch.set(session.batch.id, []);
+      }
+      sessionsByBatch.get(session.batch.id)!.push(session);
     }
+
+    // Create a packed schedule for each batch
+    sessionsByBatch.forEach(batchSessions => {
+      let dayIndex = 0;
+      let slotIndex = 0;
+
+      for (const session of batchSessions) {
+        // Assign day and slot
+        const day = DAYS[dayIndex];
+        const slot = schedulableSlots[slotIndex];
+
+        // Assign faculty and room
+        const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
+        const randomFaculty = suitableFaculty.length > 0
+          ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)]
+          : null;
+        const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+
+        individual.push({ ...session, day, slot, faculty: randomFaculty, room: randomRoom });
+
+        // Move to the next slot/day
+        slotIndex++;
+        if (slotIndex >= schedulableSlots.length) {
+          slotIndex = 0;
+          dayIndex = (dayIndex + 1) % DAYS.length;
+        }
+      }
+    });
+
     population.push(individual);
   }
   return population;
