@@ -159,13 +159,22 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
   return population;
 };
 
-const calculateFitness = (individual: any[], inputData: OptimizerInput) => {
-  let fitness = 100;
-  fitness -= getHardConflicts(individual, inputData).length * 10;
+const calculateFitness = (individual: any[], inputData: OptimizerInput): number => {
+  let fitness = 1000; // Start with a higher base fitness to allow for more nuanced penalties.
+
+  // 1. INCREASED PENALTY FOR HARD CONFLICTS
+  // This makes any double-booking or capacity issue highly undesirable for the algorithm.
+  const hardConflicts = getHardConflicts(individual, inputData);
+  fitness -= hardConflicts.length * 100; // Increased from 10 to 100
+
   const TIME_SLOTS = inputData.academicSettings.periods.map(p => `${p.start}-${p.end}`);
   const timetable = individualToTimetable(individual, TIME_SLOTS);
-  const score = calculateScore(timetable, [], inputData, TIME_SLOTS);
-  fitness += (score - 100);
+  const enabledSoftConstraints = inputData.constraints.filter(c => c.type === 'soft' && c.enabled);
+
+  // Add the score from our improved scoring function
+  const score = calculateScore(timetable, enabledSoftConstraints, inputData, TIME_SLOTS);
+  fitness += score; // This score will be negative, representing penalties
+
   return Math.max(0, fitness);
 };
 
