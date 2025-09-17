@@ -42,7 +42,7 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>({
     id: '1',
-    name: 'Dr. Sarah Admin',
+    name: 'Dr. Selvi',
     email: 'admin@university.edu',
     role: 'Super Admin',
     department: 'Administration',
