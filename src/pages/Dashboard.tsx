@@ -1,3 +1,5 @@
+// src/pages/Dashboard.tsx
+
 import React, { useMemo } from 'react';
 import {
   Users,
@@ -64,7 +66,6 @@ const Dashboard: React.FC = () => {
 
   // Calculate System Health metrics
   const systemHealthData = useMemo(() => {
-    // --- ✅ FIX IS HERE ---
     const conflicts = generatedTimetable?.conflicts?.length ?? 0;
     // NOTE: Real utilization and load would require a more complex calculation based on the generated timetable.
     // These are placeholders for demonstration.
