@@ -1,3 +1,5 @@
+// src/pages/TimetableViewer.tsx
+
 import React, { useState, useMemo } from 'react';
 import { Calendar, Grid, Filter, Download, Users, MapPin, Clock } from 'lucide-react';
 import TimetableGrid from '../components/Timetable/TimetableGrid';
@@ -48,7 +50,7 @@ const TimetableViewer: React.FC = () => {
     const totalClasses = filteredTimetableData.length;
     const rooms = new Set(filteredTimetableData.map(c => c.room.id));
     const faculty = new Set(filteredTimetableData.map(c => c.faculty.id));
-    const weeklyHours = filteredTimetableData.reduce((acc, c) => acc + (c.course.weeklyHours / c.course.weeklyHours), 0); // Assuming each class is 1 hour
+    const weeklyHours = filteredTimetableData.reduce((acc, c) => acc + 1, 0); // Each class is 1 hour
     const totalRooms = departments.flatMap(d => d.faculty).length;
 
 
