@@ -41,11 +41,12 @@ export interface OptimizationResult {
   timetable: Timetable;
   score: number;
   conflicts: ConflictDetail[]; // Changed from number to ConflictDetail[]
+  created_at: string;
 }
 
 // --- CONSTANTS AND CONFIGURATION ---
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const POPULATION_SIZE = 500;
+const POPULATION_SIZE = 50;
 const MAX_GENERATIONS = 100;
 const MUTATION_RATE = 0.02;
 const TOURNAMENT_SIZE = 5;
@@ -117,7 +118,7 @@ export const runOptimization = async (
         newPopulation.push(child);
       }
       population = newPopulation;
-      
+
       // Update progress based on the current run and generation
       const totalProgress = (run / OPTIMIZATION_RUNS) * 100 + (generation / MAX_GENERATIONS) * (100 / OPTIMIZATION_RUNS);
       updateProgress(5 + totalProgress * 0.9);
@@ -136,6 +137,7 @@ export const runOptimization = async (
       timetable: bestTimetable,
       score: bestScore,
       conflicts: bestConflicts,
+      created_at: new Date().toISOString(),
     });
   }
 
@@ -153,8 +155,8 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
     let individual = [];
     for (const session of sessions) {
       const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
-      const randomFaculty = suitableFaculty.length > 0 
-        ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)] 
+      const randomFaculty = suitableFaculty.length > 0
+        ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)]
         : null;
       const randomDay = DAYS[Math.floor(Math.random() * DAYS.length)];
       const randomSlot = schedulableSlots[Math.floor(Math.random() * schedulableSlots.length)];
@@ -265,7 +267,7 @@ const getHardConflicts = (individual: any[], inputData: OptimizerInput): Conflic
             if (classes.length > 1) conflicts.push({ type: 'BATCH_DOUBLE_BOOKED', day, slot, message: `Batch ${classes[0].batch.name} has ${classes.length} classes scheduled.`, involved: classes.map(c => c.course.id) });
         });
     }
-    
+
     for (const c of individual) {
         if (!c.faculty) {
             conflicts.push({ type: 'FACULTY_UNASSIGNED', day: c.day, slot: c.slot, message: `Course ${c.course.name} has no faculty.`, involved: [c.course.id] });
@@ -274,7 +276,7 @@ const getHardConflicts = (individual: any[], inputData: OptimizerInput): Conflic
             conflicts.push({ type: 'ROOM_CAPACITY', day: c.day, slot: c.slot, message: `Room ${c.room.name} (Cap: ${c.room.capacity}) too small for ${c.batch.name} (${c.batch.studentCount}).`, involved: [c.room.id, c.batch.id] });
         }
     }
-    
+
     return conflicts;
 }
 
