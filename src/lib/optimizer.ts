@@ -83,14 +83,10 @@ export const runOptimization = async (
   input: OptimizerInput,
   updateProgress: (progress: number) => void
 ): Promise<OptimizationResult[]> => {
-  input.targetSemester = 3;
   const { departments, rooms, constraints, academicSettings } = input;
   const TIME_SLOTS = academicSettings.periods.map(p => `${p.start}-${p.end}`);
   const LUNCH_SLOT = `${academicSettings.lunchStartTime}-${academicSettings.lunchEndTime}`;
   const SCHEDULABLE_SLOTS = TIME_SLOTS.filter(slot => slot !== LUNCH_SLOT);
-  
-  updateProgress(5);
-  await yieldToEventLoop();
 
   const classSessions = createClassSessions(departments, input.targetSemester);
   const allFaculty = getAllFaculty(departments);
@@ -100,42 +96,53 @@ export const runOptimization = async (
       throw new Error("Insufficient data for optimization.");
   }
 
-  let population = initializePopulation(classSessions, allFaculty, rooms, POPULATION_SIZE, SCHEDULABLE_SLOTS);
+  const OPTIMIZATION_RUNS = 3;
+  let allResults: OptimizationResult[] = [];
 
-  for (let generation = 0; generation < MAX_GENERATIONS; generation++) {
-    const fitnessScores = population.map(individual => calculateFitness(individual, input));
-    let newPopulation = [];
-    const sortedPopulation = population
-        .map((ind, i) => ({ individual: ind, score: fitnessScores[i] }))
-        .sort((a, b) => b.score - a.score);
-    for (let i = 0; i < ELITISM_COUNT; i++) { newPopulation.push(sortedPopulation[i].individual); }
-    for (let i = 0; i < POPULATION_SIZE - ELITISM_COUNT; i++) {
-      const parent1 = tournamentSelection(population, fitnessScores);
-      const parent2 = tournamentSelection(population, fitnessScores);
-      let child = crossover(parent1, parent2);
-      child = mutate(child, allFaculty, rooms, SCHEDULABLE_SLOTS);
-      newPopulation.push(child);
+  for (let run = 0; run < OPTIMIZATION_RUNS; run++) {
+    let population = initializePopulation(classSessions, allFaculty, rooms, POPULATION_SIZE, SCHEDULABLE_SLOTS);
+
+    for (let generation = 0; generation < MAX_GENERATIONS; generation++) {
+      const fitnessScores = population.map(individual => calculateFitness(individual, input));
+      let newPopulation = [];
+      const sortedPopulation = population
+          .map((ind, i) => ({ individual: ind, score: fitnessScores[i] }))
+          .sort((a, b) => b.score - a.score);
+      for (let i = 0; i < ELITISM_COUNT; i++) { newPopulation.push(sortedPopulation[i].individual); }
+      for (let i = 0; i < POPULATION_SIZE - ELITISM_COUNT; i++) {
+        const parent1 = tournamentSelection(population, fitnessScores);
+        const parent2 = tournamentSelection(population, fitnessScores);
+        let child = crossover(parent1, parent2);
+        child = mutate(child, allFaculty, rooms, SCHEDULABLE_SLOTS);
+        newPopulation.push(child);
+      }
+      population = newPopulation;
+      
+      // Update progress based on the current run and generation
+      const totalProgress = (run / OPTIMIZATION_RUNS) * 100 + (generation / MAX_GENERATIONS) * (100 / OPTIMIZATION_RUNS);
+      updateProgress(5 + totalProgress * 0.9);
+      await yieldToEventLoop();
     }
-    population = newPopulation;
-    updateProgress(5 + (generation / MAX_GENERATIONS) * 90);
-    await yieldToEventLoop();
-  }
 
-  const finalFitnessScores = population.map(individual => calculateFitness(individual, input));
-  const bestIndividual = population[finalFitnessScores.indexOf(Math.max(...finalFitnessScores))];
-  const bestTimetable = individualToTimetable(bestIndividual, TIME_SLOTS);
-  const bestScore = calculateScore(bestTimetable, enabledSoftConstraints, input, SCHEDULABLE_SLOTS);
-  const bestConflicts = getHardConflicts(bestIndividual, input); // Using the new detailed function
+    const finalFitnessScores = population.map(individual => calculateFitness(individual, input));
+    const bestIndividual = population[finalFitnessScores.indexOf(Math.max(...finalFitnessScores))];
+    const bestTimetable = individualToTimetable(bestIndividual, TIME_SLOTS);
+    const bestScore = calculateScore(bestTimetable, enabledSoftConstraints, input, SCHEDULABLE_SLOTS);
+    const bestConflicts = getHardConflicts(bestIndividual, input);
+
+    allResults.push({
+      id: run + 1,
+      name: `Solution ${run + 1}`,
+      timetable: bestTimetable,
+      score: bestScore,
+      conflicts: bestConflicts,
+    });
+  }
 
   updateProgress(100);
 
-  return [{
-    id: 1,
-    name: "Generated Schedule",
-    timetable: bestTimetable,
-    score: bestScore,
-    conflicts: bestConflicts,
-  }];
+  // Sort all results by score (descending) and return the top 3
+  return allResults.sort((a, b) => b.score - a.score).slice(0, 3);
 };
 
 
