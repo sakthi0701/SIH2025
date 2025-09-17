@@ -31,6 +31,7 @@ export interface AcademicSettings {
 // --- CONTEXT TYPE ---
 interface DataContextType {
   departments: Department[];
+  currentSemester: number;
   courses: (Course & { departmentId: string; regulationId: string; department: string; })[];
   faculty: (Faculty & { departmentId: string; department: string; })[];
   rooms: Room[];
