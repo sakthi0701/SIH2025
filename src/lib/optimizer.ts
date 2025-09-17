@@ -273,7 +273,9 @@ const getHardConflicts = (individual: any[], inputData: OptimizerInput): Conflic
 
 const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inputData: OptimizerInput, schedulableSlots: string[]): number => {
     let score = 0;
-    const GAP_PENALTY = 5;
+    const GAP_PENALTY = 10; // 2. INCREASED GAP PENALTY (from 5 to 10)
+    const FIRST_HOUR_PENALTY = 5; // 3. NEW: PENALTY FOR STARTING LATE
+
     for (const department of inputData.departments) {
         for (const batch of department.batches) {
             for (const day of DAYS) {
@@ -282,18 +284,27 @@ const calculateScore = (timetable: Timetable, softConstraints: Constraint[], inp
                     .filter(index => index !== -1)
                     .sort((a, b) => a - b);
 
-                if (classIndices.length > 1) {
-                    for (let i = 0; i < classIndices.length - 1; i++) {
-                        const gap = classIndices[i+1] - classIndices[i] - 1;
-                        if (gap > 0) {
-                            score -= gap * GAP_PENALTY;
+                if (classIndices.length > 0) {
+                    // Penalize gaps at the beginning of the day to push classes earlier
+                    const firstClassIndex = classIndices[0];
+                    score -= firstClassIndex * FIRST_HOUR_PENALTY;
+
+                    // Penalize gaps between classes more heavily
+                    if (classIndices.length > 1) {
+                        for (let i = 0; i < classIndices.length - 1; i++) {
+                            const gap = classIndices[i+1] - classIndices[i] - 1;
+                            if (gap > 0) {
+                                score -= gap * GAP_PENALTY;
+                            }
                         }
                     }
                 }
             }
         }
     }
-    return 100 + score;
+    // This is where other soft constraints (like teacher preferences) would be added in the future.
+
+    return score; // The final score is a negative value representing total penalties.
 };
 
 const individualToTimetable = (individual: any[], timeSlots: string[]): Timetable => {
