@@ -102,6 +102,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [settings, setSettings] = useState<AcademicSettings | null>(null);
   const [timetables, setTimetables] = useState<TimetableSolution[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentSemester, setCurrentSemester] = useState<number>(1);
   const [generatedTimetable, setGeneratedTimetable] = useState<TimetableSolution | null>(null);
 
   useEffect(() => {
