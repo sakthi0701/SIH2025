@@ -36,7 +36,7 @@ export interface ConflictDetail {
 
 // **UPDATED**: OptimizationResult now uses the detailed conflict type
 export interface OptimizationResult {
-  id: number;
+  id: string;
   name: string;
   timetable: Timetable;
   score: number;
@@ -132,7 +132,7 @@ export const runOptimization = async (
     const bestConflicts = getHardConflicts(bestIndividual, input);
 
     allResults.push({
-      id: run + 1,
+      id: crypto.randomUUID(),
       name: `Solution ${run + 1}`,
       timetable: bestTimetable,
       score: bestScore,
