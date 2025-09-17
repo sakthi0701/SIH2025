@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, RotateCcw, Settings, Download, AlertCircle, CheckCircle, Eye } from 'lucide-react';
+import { Play, RotateCcw, Settings, Download, AlertCircle, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import { runOptimization, OptimizerInput, OptimizationResult } from '../lib/optimizer';
 import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +9,7 @@ const OptimizerRunner: React.FC = () => {
   const [results, setResults] = useState<OptimizationResult[]>([]);
   const [progress, setProgress] = useState(0);
   const [targetSemester, setTargetSemester] = useState<number>(3);
-  const { departments, rooms, constraints, setGeneratedTimetable } = useData();
+  const { departments, rooms, constraints, setGeneratedTimetable, timetables, addTimetable, deleteTimetable } = useData();
   const navigate = useNavigate();
 
   const handleRunOptimization = async () => {
@@ -49,6 +49,10 @@ const OptimizerRunner: React.FC = () => {
       if (optimizationResults.length > 0) {
         // Automatically load the best result
         setGeneratedTimetable(optimizationResults[0]);
+        // Save all results to Supabase
+        for (const result of optimizationResults) {
+            await addTimetable(result);
+        }
       }
     } catch (error) {
       console.error("Optimization failed:", error);
@@ -149,6 +153,44 @@ const OptimizerRunner: React.FC = () => {
              ))}
            </div>
         </div>
+      )}
+      {/* Saved Timetables */}
+      {timetables.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">Saved Timetables</h2>
+              <div className="space-y-4">
+                  {timetables.map((timetable) => (
+                      <div key={timetable.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-center">
+                          <div>
+                              <h3 className="font-semibold text-gray-800">{timetable.name}</h3>
+                              <div className="flex space-x-4 text-sm mt-2">
+                                  <div className="flex items-center text-green-600">
+                                      <CheckCircle className="h-4 w-4 mr-1" />
+                                      Score: {timetable.score.toFixed(2)}
+                                  </div>
+                                  <div className={`flex items-center ${timetable.conflicts.length > 0 ? 'text-red-600' : 'text-gray-600'}`}>
+                                      <AlertCircle className="h-4 w-4 mr-1" />
+                                      Conflicts: {timetable.conflicts.length}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                      Created: {new Date(timetable.created_at).toLocaleString()}
+                                  </div>
+                              </div>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                              <button onClick={() => handleLoadTimetable(timetable)} className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Load
+                              </button>
+                              <button onClick={() => deleteTimetable(timetable.id)} className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700">
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                              </button>
+                          </div>
+                      </div>
+                  ))}
+              </div>
+          </div>
       )}
     </div>
   );
