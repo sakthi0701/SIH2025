@@ -13,7 +13,7 @@ interface DataTableProps {
 
 const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
   const { departments } = useData();
-  
+
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [viewItem, setViewItem] = useState<any>(null);
   const [editItem, setEditItem] = useState<any>(null);
@@ -55,47 +55,7 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
   };
 
   const handleEditClick = (itemToEdit: any) => {
-    if (type === 'departments' || type === 'rooms') {
-      setEditItem(itemToEdit);
-      return;
-    }
-
-    let itemWithContext = { ...itemToEdit };
-    let parentFound = false;
-
-    for (const dept of departments) {
-      if (parentFound) break;
-
-      switch (type) {
-        case 'courses':
-          for (const reg of dept.regulations) {
-            for (const sem of reg.semesters) {
-              if (sem.courses.some(c => c.id === itemToEdit.id)) {
-                itemWithContext.departmentId = dept.id;
-                itemWithContext.regulationId = reg.id;
-                parentFound = true;
-                break;
-              }
-            }
-            if (parentFound) break;
-          }
-          break;
-        case 'faculty':
-          if (dept.faculty.some(f => f.id === itemToEdit.id)) {
-            itemWithContext.departmentId = dept.id;
-            parentFound = true;
-          }
-          break;
-        case 'batches':
-          if (dept.batches.some(b => b.id === itemToEdit.id)) {
-            itemWithContext.departmentId = dept.id;
-            parentFound = true;
-          }
-          break;
-      }
-    }
-    
-    setEditItem(itemWithContext);
+    setEditItem(itemToEdit);
   };
 
   const filteredData = data.filter((item) =>
@@ -113,7 +73,7 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
   };
 
   const toggleAllRows = () => {
-    if (selectedRows.size === filteredData.length) { setSelectedRows(new Set()); } 
+    if (selectedRows.size === filteredData.length) { setSelectedRows(new Set()); }
     else { setSelectedRows(new Set(filteredData.map((_, index) => index))); }
   };
 
@@ -143,9 +103,9 @@ const DataTable: React.FC<DataTableProps> = ({ type, data, searchTerm }) => {
           ))}
         </tbody>
       </table>
-      
+
       {filteredData.length === 0 && (<div className="text-center py-12"><p className="text-gray-500">No {type} found.</p></div>)}
-      
+
       {viewItem && (<ViewDataModal isOpen={!!viewItem} onClose={() => setViewItem(null)} item={viewItem} type={type}/>)}
       {editItem && (<EditDataModal isOpen={!!editItem} onClose={() => setEditItem(null)} item={editItem} type={type}/>)}
       {deleteItem && (<DeleteConfirmModal isOpen={!!deleteItem} onClose={() => setDeleteItem(null)} item={deleteItem} type={type} onConfirm={() => setDeleteItem(null)}/>)}
