@@ -46,8 +46,8 @@ export interface OptimizationResult {
 
 // --- CONSTANTS AND CONFIGURATION ---
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-const POPULATION_SIZE = 50;
-const MAX_GENERATIONS = 100;
+const POPULATION_SIZE = 100;
+const MAX_GENERATIONS = 200;
 const MUTATION_RATE = 0.02;
 const TOURNAMENT_SIZE = 5;
 const ELITISM_COUNT = 2;
