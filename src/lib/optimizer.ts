@@ -150,9 +150,9 @@ export const runOptimization = async (
 
 // --- GA OPERATORS ---
 const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Room[], size: number, schedulableSlots: string[]): any[][] => {
-  let population = [];
+  const population = [];
   for (let i = 0; i < size; i++) {
-    let individual = [];
+    const individual = [];
     const sessionsByBatch = new Map<string, any[]>();
 
     // Group sessions by batch
@@ -163,34 +163,55 @@ const initializePopulation = (sessions: any[], allFaculty: Faculty[], rooms: Roo
       sessionsByBatch.get(session.batch.id)!.push(session);
     }
 
-    // Create a packed schedule for each batch
     sessionsByBatch.forEach(batchSessions => {
-      let dayIndex = 0;
-      let slotIndex = 0;
+      // Shuffle sessions to avoid scheduling the same course consecutively
+      for (let j = batchSessions.length - 1; j > 0; j--) {
+        const k = Math.floor(Math.random() * (j + 1));
+        [batchSessions[j], batchSessions[k]] = [batchSessions[k], batchSessions[j]];
+      }
+
+      const totalClasses = batchSessions.length;
+      const classesPerDay = Math.ceil(totalClasses / DAYS.length);
+      const dayCounts = new Array(DAYS.length).fill(0);
+      const dailyCourses = new Array(DAYS.length).fill(null).map(() => new Set());
 
       for (const session of batchSessions) {
-        // Assign day and slot
-        const day = DAYS[dayIndex];
-        const slot = schedulableSlots[slotIndex];
+        let placed = false;
+        let attempts = 0;
+        while (!placed && attempts < 50) {
+          const dayIndex = Math.floor(Math.random() * DAYS.length);
+          const slotIndex = Math.floor(Math.random() * schedulableSlots.length);
 
-        // Assign faculty and room
-        const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
-        const randomFaculty = suitableFaculty.length > 0
-          ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)]
-          : null;
-        const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+          if (dayCounts[dayIndex] < classesPerDay && !dailyCourses[dayIndex].has(session.course.id)) {
+            const day = DAYS[dayIndex];
+            const slot = schedulableSlots[slotIndex];
+            const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
+            const randomFaculty = suitableFaculty.length > 0
+              ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)]
+              : null;
+            const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
 
-        individual.push({ ...session, day, slot, faculty: randomFaculty, room: randomRoom });
+            individual.push({ ...session, day, slot, faculty: randomFaculty, room: randomRoom });
+            dayCounts[dayIndex]++;
+            dailyCourses[dayIndex].add(session.course.id);
+            placed = true;
+          }
+          attempts++;
+        }
 
-        // Move to the next slot/day
-        slotIndex++;
-        if (slotIndex >= schedulableSlots.length) {
-          slotIndex = 0;
-          dayIndex = (dayIndex + 1) % DAYS.length;
+        // If the class couldn't be placed with the constraints, place it randomly
+        if (!placed) {
+          const day = DAYS[Math.floor(Math.random() * DAYS.length)];
+          const slot = schedulableSlots[Math.floor(Math.random() * schedulableSlots.length)];
+          const suitableFaculty = allFaculty.filter(f => f.assignedCourses.includes(session.course.id));
+          const randomFaculty = suitableFaculty.length > 0
+            ? suitableFaculty[Math.floor(Math.random() * suitableFaculty.length)]
+            : null;
+          const randomRoom = rooms[Math.floor(Math.random() * rooms.length)];
+          individual.push({ ...session, day, slot, faculty: randomFaculty, room: randomRoom });
         }
       }
     });
-
     population.push(individual);
   }
   return population;
