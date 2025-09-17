@@ -1,3 +1,5 @@
+// src/pages/OptimizerRunner.tsx
+
 import React, { useState } from 'react';
 import { Play, RotateCcw, Settings, Download, AlertCircle, CheckCircle, Eye, Trash2 } from 'lucide-react';
 import { runOptimization, OptimizerInput, OptimizationResult } from '../lib/optimizer';
@@ -8,8 +10,7 @@ const OptimizerRunner: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<OptimizationResult[]>([]);
   const [progress, setProgress] = useState(0);
-  const [targetSemester, setTargetSemester] = useState<number>(3);
-  const { departments, rooms, constraints, setGeneratedTimetable, timetables, addTimetable, deleteTimetable } = useData();
+  const { departments, rooms, constraints, setGeneratedTimetable, timetables, addTimetable, deleteTimetable, settings, updateSettings, currentSemester } = useData();
   const navigate = useNavigate();
 
   const handleRunOptimization = async () => {
@@ -39,7 +40,7 @@ const OptimizerRunner: React.FC = () => {
       departments,
       rooms,
       constraints,
-      targetSemester: targetSemester,
+      targetSemester: currentSemester,
       academicSettings,
     };
 
@@ -86,8 +87,8 @@ const OptimizerRunner: React.FC = () => {
                     Target Semester
                 </label>
                 <select
-                    value={targetSemester}
-                    onChange={(e) => setTargetSemester(parseInt(e.target.value))}
+                    value={currentSemester}
+                    onChange={(e) => updateSettings({ activeSemester: parseInt(e.target.value)})}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     disabled={isRunning}
                 >
