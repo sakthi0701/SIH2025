@@ -1,11 +1,11 @@
-// src/lib/enhanced-optimizer.ts
+// src/lib/optimizer.ts
 
 import { Department, Course, Faculty, Room, Batch, Constraint } from '../context/DataContext';
 
 // Enhanced types with better conflict tracking
 export interface ConflictDetail {
-  type: 'FACULTY_DOUBLE_BOOKED' | 'ROOM_DOUBLE_BOOKED' | 'BATCH_DOUBLE_BOOKED' | 
-        'ROOM_CAPACITY' | 'FACULTY_UNASSIGNED' | 'FACULTY_OVERLOADED' | 
+  type: 'FACULTY_DOUBLE_BOOKED' | 'ROOM_DOUBLE_BOOKED' | 'BATCH_DOUBLE_BOOKED' |
+        'ROOM_CAPACITY' | 'FACULTY_UNASSIGNED' | 'FACULTY_OVERLOADED' |
         'CONTINUOUS_CLASSES' | 'POOR_CLUSTERING';
   day: string;
   slot: string;
@@ -42,8 +42,8 @@ const CONFIG = {
   // Penalty weights (higher = more important)
   PENALTIES: {
     HARD_CONFLICT: 1000,       // Critical - must be zero
-    CONTINUOUS_CLASSES: 50,     // High penalty for back-to-back classes
-    POOR_CLUSTERING: 30,        // Penalty for scattered classes
+    CONTINUOUS_CLASSES: 50,    // High penalty for back-to-back classes
+    POOR_CLUSTERING: 30,       // Penalty for scattered classes
     GAP_PENALTY: 20,           // Penalty for gaps between classes
     LATE_START_PENALTY: 10,    // Prefer earlier start times
     UNEVEN_DISTRIBUTION: 15,   // Prefer even distribution across days
