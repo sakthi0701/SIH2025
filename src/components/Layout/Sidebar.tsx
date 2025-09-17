@@ -46,7 +46,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed }) => {
         <div className="flex items-center space-x-3">
           <GraduationCap className="h-8 w-8 text-white" />
           {!collapsed && (
-            <span className="text-xl font-bold text-white">TimetablePro</span>
+            <span className="text-xl font-bold text-white">Scheduleit.ai</span>
           )}
         </div>
       </div>
