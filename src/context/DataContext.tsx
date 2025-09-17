@@ -359,7 +359,8 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addConstraint, updateConstraint, deleteConstraint,
     updateBatchCourseAssignments,
     generatedTimetable, setGeneratedTimetable,
-    addTimetable, deleteTimetable
+    addTimetable, deleteTimetable, settings,
+    currentSemester,
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
