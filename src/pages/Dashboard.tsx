@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
     const conflicts = generatedTimetable?.conflicts?.length ?? 0;
     // NOTE: Real utilization and load would require a more complex calculation based on the generated timetable.
     // These are placeholders for demonstration.
-    const roomUtilization = generatedTimetable ? '78%' : 'N/A';
+    const roomUtilization = generatedTimetable?.quality_metrics?.utilization_rate.toFixed(2) + '%' || 'N/A';
     const facultyLoad = generatedTimetable ? '82%' : 'N/A';
 
     return [
