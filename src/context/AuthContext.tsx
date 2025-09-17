@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     {
       id: '1',
       name: 'Dr. Selvi',
-      email: 'sarah.admin@university.edu',
+      email: 'Selvi.admin@university.edu',
       role: 'Super Admin',
       department: 'Administration',
       status: 'active',
