@@ -14,9 +14,10 @@ export interface Batch { id: string; name: string; regulationId: string; student
 export interface Faculty { id: string; name: string; email: string; maxLoad: number; assignedCourses: string[]; }
 export interface Department { id: string; name: string; code: string; head: string; regulations: Regulation[]; batches: Batch[]; faculty: Faculty[]; }
 export interface Room { id: string; name: string; type: 'Classroom' | 'Lab' | 'Auditorium' | 'Seminar Hall'; capacity: number; building: string; equipment: string[]; }
-export interface TimetableSolution { id: number; name: string; timetable: any; score: number; }
+export interface TimetableSolution { id: string; name: string; timetable: any; score: number; conflicts: any[]; created_at: string; }
 export interface Constraint { id: string; name: string; type: 'hard' | 'soft'; description: string; priority: number; enabled: boolean; category: string; }
 export interface AcademicSettings {
+    id: string;
     activeSemester: number;
     workingDays: string[];
     breakStartTime: string;
@@ -36,8 +37,9 @@ interface DataContextType {
   batches: (Batch & { departmentId: string; department: string; })[];
   constraints: Constraint[];
   settings: AcademicSettings | null;
+  timetables: TimetableSolution[];
   loading: boolean;
-  
+
   // Settings Functions
   updateSettings: (updates: Partial<AcademicSettings>) => Promise<void>;
 
@@ -82,6 +84,8 @@ interface DataContextType {
   // Timetable State
   generatedTimetable: TimetableSolution | null;
   setGeneratedTimetable: (timetable: TimetableSolution | null) => void;
+  addTimetable: (timetable: Omit<TimetableSolution, 'id' | 'created_at'>) => Promise<void>;
+  deleteTimetable: (id: string) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -95,6 +99,7 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [batches, setBatches] = useState<(Batch & { departmentId: string; department: string; })[]>([]);
   const [constraints, setConstraints] = useState<Constraint[]>([]);
   const [settings, setSettings] = useState<AcademicSettings | null>(null);
+  const [timetables, setTimetables] = useState<TimetableSolution[]>([]);
   const [loading, setLoading] = useState(true);
   const [generatedTimetable, setGeneratedTimetable] = useState<TimetableSolution | null>(null);
 
@@ -105,17 +110,21 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
       const { data: roomsData, error: roomError } = await supabase.from('rooms').select('*');
       const { data: constraintsData, error: constraintError } = await supabase.from('constraints').select('*');
       const { data: settingsData, error: settingsError } = await supabase.from('settings').select('*').single();
+      const { data: timetablesData, error: timetableError } = await supabase.from('timetables').select('*').order('created_at', { ascending: false });
+
 
       if (deptError) console.error('Error fetching departments:', deptError); else setDepartments(departmentsData || []);
       if (roomError) console.error('Error fetching rooms:', roomError); else setRooms(roomsData || []);
       if (constraintError) console.error('Error fetching constraints:', constraintError); else setConstraints(constraintsData || []);
       if (settingsError) console.error('Error fetching settings:', settingsError); else setSettings(settingsData || null);
+      if (timetableError) console.error('Error fetching timetables:', timetableError); else setTimetables(timetablesData || []);
+
 
       setLoading(false);
     };
     fetchData();
   }, []);
-  
+
   const updateSettings = async (updates: Partial<AcademicSettings>) => {
       if (!settings) return;
       const { data, error } = await supabase.from('settings').update(updates).eq('id', settings.id).select().single();
@@ -313,8 +322,28 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     await updateDepartment(departmentId, { batches: updatedBatches });
   };
 
+  const addTimetable = async (timetable: Omit<TimetableSolution, 'id' | 'created_at'>) => {
+    const { data, error } = await supabase.from('timetables').insert([timetable]).select();
+    if (error) {
+        console.error("Error adding timetable:", error);
+        throw error;
+    }
+    if (data) {
+        setTimetables(prev => [data[0], ...prev]);
+    }
+  };
+
+  const deleteTimetable = async (id: string) => {
+      const { error } = await supabase.from('timetables').delete().eq('id', id);
+      if (error) {
+          console.error("Error deleting timetable:", error);
+          throw error;
+      }
+      setTimetables(prev => prev.filter(t => t.id !== id));
+  };
+
   const value = {
-    departments, courses, faculty, rooms, batches, constraints, loading, settings,
+    departments, courses, faculty, rooms, batches, constraints, loading, settings, timetables,
     updateSettings,
     addDepartment, updateDepartment, deleteDepartment,
     addRegulationToDepartment, updateRegulationInDepartment, deleteRegulationFromDepartment,
@@ -324,7 +353,8 @@ export const DataProvider: React.FC<{children: ReactNode}> = ({ children }) => {
     addRoom, updateRoom, deleteRoom,
     addConstraint, updateConstraint, deleteConstraint,
     updateBatchCourseAssignments,
-    generatedTimetable, setGeneratedTimetable
+    generatedTimetable, setGeneratedTimetable,
+    addTimetable, deleteTimetable
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
