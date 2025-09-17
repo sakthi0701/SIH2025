@@ -174,7 +174,7 @@ const calculateFitness = (individual: any[], inputData: OptimizerInput): number 
   // 1. INCREASED PENALTY FOR HARD CONFLICTS
   // This makes any double-booking or capacity issue highly undesirable for the algorithm.
   const hardConflicts = getHardConflicts(individual, inputData);
-  fitness -= hardConflicts.length * 100; // Increased from 10 to 100
+  fitness -= hardConflicts.length * 50; // Adjusted from 100 to 50
 
   const TIME_SLOTS = inputData.academicSettings.periods.map(p => `${p.start}-${p.end}`);
   const timetable = individualToTimetable(individual, TIME_SLOTS);
