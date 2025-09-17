@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { Play, RotateCcw, Settings, Download, AlertCircle, CheckCircle, Eye, Trash2 } from 'lucide-react';
-import { runOptimization, OptimizerInput, OptimizationResult } from '../lib/optimizer';
+import { runEnhancedOptimization, OptimizationResult } from '../lib/optimizer';
 import { useData } from '../context/DataContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -36,7 +36,7 @@ const OptimizerRunner: React.FC = () => {
         lunchEndTime: '14:00'
     };
 
-    const optimizerInput: OptimizerInput = {
+    const optimizerInput = {
       departments,
       rooms,
       constraints,
@@ -45,7 +45,7 @@ const OptimizerRunner: React.FC = () => {
     };
 
     try {
-      const optimizationResults = await runOptimization(optimizerInput, setProgress);
+      const optimizationResults = await runEnhancedOptimization(optimizerInput, setProgress);
       setResults(optimizationResults);
       if (optimizationResults.length > 0) {
         // Automatically load the best result
